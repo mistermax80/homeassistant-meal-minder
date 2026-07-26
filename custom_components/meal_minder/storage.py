@@ -86,3 +86,27 @@ class MealMinderStorage:
                 return True
 
         return False
+
+    async def async_get_meals(
+        self,
+        date: str | None = None,
+        meal_type: str | None = None,
+    ) -> list[dict]:
+
+        meals = self.data.get("meals", [])
+
+        if date:
+            meals = [
+                meal
+                for meal in meals
+                if meal["date"] == date
+            ]
+
+        if meal_type:
+            meals = [
+                meal
+                for meal in meals
+                if meal["type"] == meal_type
+            ]
+
+        return meals

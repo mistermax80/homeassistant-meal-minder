@@ -89,3 +89,25 @@ update_meal:
       selector:
         text:
           multiline: true
+
+get_meals:
+  name: Get meals
+  description: Get meals from the meal plan
+  fields:
+    date:
+      name: Date
+      description: Meal date (YYYY-MM-DD)
+      required: false
+      selector:
+        text:
+
+    meal_type:
+      name: Meal type
+      description: Breakfast, lunch or dinner
+      required: false
+      selector:
+        select:
+          options:
+            - breakfast
+            - lunch
+            - dinner

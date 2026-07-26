@@ -1,5 +1,5 @@
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 
 from .const import DOMAIN
 from .storage import MealMinderStorage
@@ -75,6 +75,17 @@ async def async_setup_entry(
                 "meal_minder_updated"
             )
 
+    async def get_meals(call: ServiceCall):
+
+        meals = await storage.async_get_meals(
+            date=call.data.get("date"),
+            meal_type=call.data.get("meal_type"),
+        )
+
+        return {
+            "meals": meals,
+        }
+
     hass.services.async_register(
         DOMAIN,
         "add_meal",
@@ -91,6 +102,13 @@ async def async_setup_entry(
         DOMAIN,
         "update_meal",
         update_meal,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_meals",
+        get_meals,
+        supports_response=SupportsResponse.ONLY,
     )
 
     await hass.config_entries.async_forward_entry_setups(
