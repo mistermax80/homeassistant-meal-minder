@@ -26,11 +26,19 @@ async def async_setup_entry(
         await storage.async_add_meal(
             date=call.data["date"],
             meal_type=call.data["meal_type"],
-            description=call.data["description"],
-            meal_time=str(call.data.get("time", "12:00"))[:5],
-        )
+            items=[
+                item.strip()
+                for item in call.data.get("items", "").splitlines()
+                if item.strip()
+            ],
+            meal_time=str(
+                call.data.get("time", "12:00")
+            )[:5],
+)
 
-        hass.bus.async_fire("meal_minder_updated")
+        hass.bus.async_fire(
+            "meal_minder_updated"
+        )
 
     hass.services.async_register(
         DOMAIN,

@@ -27,9 +27,10 @@ add_meal:
             - lunch
             - dinner
 
-    description:
-      name: Description
-      description: Free text description of the meal
+    items:
+      name: Meal items
+      description: One item per line
       required: true
       selector:
         text:
+          multiline: true

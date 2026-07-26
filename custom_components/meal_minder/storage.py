@@ -2,6 +2,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import STORAGE_KEY, STORAGE_VERSION
+from .models import Meal
 
 
 class MealMinderStorage:
@@ -25,22 +26,23 @@ class MealMinderStorage:
         self,
         date: str,
         meal_type: str,
-        description: str,
+        items: list[str],
         meal_time: str = "12:00",
     ):
-        self.data.setdefault("meals", [])
+        meal = Meal.create(
+            date=date,
+            time=meal_time,
+            meal_type=meal_type,
+            items=items,
+        )
 
-        # normalizza formato HH:MM
-        if meal_time:
-            meal_time = str(meal_time)[:5]
+        self.data.setdefault(
+            "meals",
+            []
+        )
 
         self.data["meals"].append(
-            {
-                "date": date,
-                "time": meal_time,
-                "type": meal_type,
-                "description": description,
-            }
+            meal.to_dict()
         )
 
         await self.async_save()

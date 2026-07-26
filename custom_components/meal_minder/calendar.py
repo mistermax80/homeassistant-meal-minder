@@ -74,11 +74,20 @@ class MealMinderCalendar(CalendarEntity):
                         meal.get("type"),
                         meal.get("type"),
                     ),
-                    description=meal.get(
-                        "description",
-                        "",
+                    description="\n".join(
+                        f"• {item}"
+                        for item in meal.get(
+                            "items",
+                            [],
+                        )
                     ),
+                    uid=meal["id"],
                 )
+            )
+
+            _LOGGER.debug(
+                "Created calendar event: %s",
+                self._events[-1],
             )
 
         self._events.sort(key=lambda x: x.start)
