@@ -1,0 +1,35 @@
+add_meal:
+  name: Add meal
+  description: Add a meal to the plan
+  fields:
+    date:
+      name: Date
+      description: Meal date (YYYY-MM-DD)
+      required: true
+      selector:
+        text:
+
+    time:
+      name: Time
+      description: Meal time
+      required: false
+      selector:
+        time:
+
+    meal_type:
+      name: Meal type
+      description: Breakfast, lunch or dinner
+      required: true
+      selector:
+        select:
+          options:
+            - breakfast
+            - lunch
+            - dinner
+
+    description:
+      name: Description
+      description: Free text description of the meal
+      required: true
+      selector:
+        text:

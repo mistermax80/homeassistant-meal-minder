@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+
+# Home Assistant test/dev files
+.storage/
+config/
+*.db
+*.db-shm
+*.db-wal
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking / linting
+.mypy_cache/
+.pyright/
+.pylint.d/
+
+# Ruff
+.ruff_cache/
+
+# Temporary
+*.tmp
+*.bak
+*.swp
+*~
+
+# Secrets
+.env
+.env.*
+secrets.yaml
