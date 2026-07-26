@@ -2,7 +2,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import STORAGE_KEY, STORAGE_VERSION
-from .models import Meal
+from .models import Meal, MealPlan
 
 
 class MealMinderStorage:
@@ -22,43 +22,98 @@ class MealMinderStorage:
     async def async_save(self):
         await self.store.async_save(self.data)
 
+    async def async_create_plan(
+        self,
+        name: str,
+        start_date: str,
+        end_date: str,
+    ) -> dict:
+
+        plan = MealPlan.create(
+            name=name,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        self.data.setdefault("plans", [])
+
+        self.data["plans"].append(plan.to_dict())
+
+        self.data["active_plan"] = plan.id
+
+        await self.async_save()
+
+        return plan.to_dict()
+
     async def async_add_meal(
         self,
-        date: str,
         meal_type: str,
         items: list[str],
         meal_time: str = "12:00",
+        weekday: int | None = None,
+        date: str | None = None,
     ):
+
+        # Meal can be added in three ways:
+        # - weekday valorizzato
+        # - date valorizzata
+        # - entrambi null = tutti i giorni
+
+        if weekday is not None and date is not None:
+            raise ValueError("Meal cannot have both weekday and date")
+
         meal = Meal.create(
-            date=date,
             time=meal_time,
             meal_type=meal_type,
             items=items,
+            weekday=weekday,
+            date=date,
         )
 
-        self.data.setdefault("meals", [])
+        active_plan_id = self.data.get("active_plan")
 
-        self.data["meals"].append(meal.to_dict())
+        if not active_plan_id:
+            raise ValueError("No active meal plan")
 
-        await self.async_save()
+        for plan in self.data.get("plans", []):
+
+            if plan["id"] == active_plan_id:
+
+                plan.setdefault("meals", [])
+
+                plan["meals"].append(meal.to_dict())
+
+                await self.async_save()
+
+                return
+
+        raise ValueError("Active meal plan not found")
 
     async def async_remove_meal(
         self,
         meal_id: str,
     ) -> bool:
 
-        meals = self.data.get("meals", [])
+        active_plan = self.data.get("active_plan")
 
-        original_count = len(meals)
+        for plan in self.data.get("plans", []):
 
-        self.data["meals"] = [meal for meal in meals if meal.get("id") != meal_id]
+            if plan["id"] == active_plan:
 
-        removed = len(self.data["meals"]) < original_count
+                meals = plan.get("meals", [])
 
-        if removed:
-            await self.async_save()
+                original_count = len(meals)
 
-        return removed
+                plan["meals"] = [meal for meal in meals if meal.get("id") != meal_id]
+
+                removed = len(plan["meals"]) < original_count
+
+                if removed:
+                    await self.async_save()
+
+                return removed
+
+        return False
 
     async def async_update_meal(
         self,
@@ -68,45 +123,79 @@ class MealMinderStorage:
 
         allowed_fields = {
             "date",
+            "weekday",
             "time",
             "type",
             "items",
         }
 
-        meals = self.data.get("meals", [])
+        active_plan = self.data.get("active_plan")
 
-        for meal in meals:
-            if meal.get("id") == meal_id:
+        for plan in self.data.get("plans", []):
 
-                for key, value in updates.items():
-                    if key in allowed_fields and value is not None:
-                        meal[key] = value
+            if plan["id"] == active_plan:
 
-                await self.async_save()
-                return True
+                for meal in plan.get("meals", []):
+
+                    if meal.get("id") == meal_id:
+
+                        for key, value in updates.items():
+
+                            if key in allowed_fields:
+                                meal[key] = value
+
+                        await self.async_save()
+
+                        return True
 
         return False
+
+    async def async_get_active_meals(
+        self,
+    ) -> list[dict]:
+
+        active_plan = self.data.get("active_plan")
+
+        for plan in self.data.get("plans", []):
+
+            if plan["id"] == active_plan:
+
+                return plan.get("meals", [])
+
+        return []
 
     async def async_get_meals(
         self,
         date: str | None = None,
+        weekday: int | None = None,
         meal_type: str | None = None,
-    ) -> list[dict]:
+    ):
 
-        meals = self.data.get("meals", [])
+        meals = await self.async_get_active_meals()
 
-        if date:
-            meals = [
-                meal
-                for meal in meals
-                if meal["date"] == date
-            ]
+        if date is not None:
+            meals = [meal for meal in meals if meal.get("date") == date]
 
-        if meal_type:
-            meals = [
-                meal
-                for meal in meals
-                if meal["type"] == meal_type
-            ]
+        if weekday is not None:
+            meals = [meal for meal in meals if meal.get("weekday") == weekday]
+
+        if meal_type is not None:
+            meals = [meal for meal in meals if meal.get("type") == meal_type]
 
         return meals
+
+    async def async_get_active_plan(
+        self,
+    ) -> dict | None:
+
+        active_plan = self.data.get("active_plan")
+
+        for plan in self.data.get(
+            "plans",
+            [],
+        ):
+
+            if plan["id"] == active_plan:
+                return plan
+
+        return None

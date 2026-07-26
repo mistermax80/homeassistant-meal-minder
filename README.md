@@ -1,8 +1,35 @@
 # 🍽️ Meal Minder
 
-**Meal Minder** is a Home Assistant custom integration to manage meals and build a simple meal plan directly inside Home Assistant.
+![Development Status](https://img.shields.io/badge/status-in%20development-orange)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Custom%20Integration-41BDF5?logo=homeassistant)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue?logo=python)
+![License](https://img.shields.io/badge/license-GPLv3-green)
 
-The goal is to keep meal planning simple and automation-friendly, using Home Assistant as the central platform for storage, calendar events and future notifications.
+**Meal Minder** is a Home Assistant custom integration to manage meal plans, recurring diets and smart meal reminders.
+
+> 🚧 This project is currently under active development.  
+> Features, APIs and data models may change before the first stable release.
+
+The goal is to transform meal planning into an automation engine integrated with Home Assistant.
+
+Meal Minder is designed around:
+- 📅 meal plans with start/end dates
+- 🔁 recurring weekly meals
+- 📌 date-based exceptions
+- 🔔 future smart reminders
+- 🛒 future shopping list integration
+
+## 🧪 Current Status
+
+The integration is currently usable for testing:
+
+✅ Create meal plans  
+✅ Add recurring meals  
+✅ Add date exceptions  
+✅ Update and remove meals  
+✅ Query meals through services  
+
+⚠️ Not yet recommended for production use.
 
 ## ✨ Features (M0)
 
@@ -49,83 +76,42 @@ Restart Home Assistant.
 
 Coming soon.
 
-## ⚙️ Services
-
-### `meal_minder.add_meal`
-
-Add a meal to the plan.
-
-Example:
-
-```yaml
-action: meal_minder.add_meal
-data:
-  date: "2026-07-26"
-  time: "20:00"
-  meal_type: "dinner"
-  items: |
-    Chicken
-    Potatoes
-    Salad
-```
-
-Each line represents one meal item.
-
-## 🗂️ Data model
-
-Meals are stored locally using Home Assistant storage.
-
-Example:
-
-```json
-{
-  "id": "d665c637986d44a9a52c89b29b6a1cae",
-  "date": "2026-07-26",
-  "time": "20:00",
-  "type": "dinner",
-  "items": [
-    "Chicken",
-    "Potatoes",
-    "Salad"
-  ]
-}
-```
-
 ## 🚀 Roadmap
 
-### M0 - Foundation
+### ✅ M0 - Foundation
 
-* [x] Integration setup
-* [x] Persistent storage
-* [x] Calendar entity
-* [x] Add meal service
-* [x] Meal items support
-* [x] Calendar events with unique identifiers
+- [x] Integration setup
+- [x] Persistent storage
+- [x] Calendar entity
+- [x] Add meal service
+- [x] Meal CRUD operations
+- [x] MealPlan container
+- [x] Weekly recurring meals
+- [x] Date exceptions
 
-### M1 - Meal management
+### 🔄 M1 - Meal management (in progress)
 
-* [ ] Edit meals
-* [ ] Delete meals
-* [ ] Weekly meal overview
-* [ ] Better UI integration
-* [ ] Real-time calendar updates
+- [ ] MealPlan CRUD
+- [ ] Multiple diet plans
+- [ ] Active plan selection
+- [ ] Better calendar rendering
+- [ ] Lovelace dashboard
 
-### M2 - Smart reminders
+### 🔔 M2 - Smart reminders
 
-* [ ] Configurable reminders
-* [ ] Advance notifications
-* [ ] Preparation reminders
+- [ ] Configurable reminders
+- [ ] Preparation notifications
+- [ ] Ingredient availability checks
+- [ ] Example:
+  
+  > "Dinner tomorrow requires meat to be defrosted today at 15:00"
 
-Example:
+### 🧠 M3 - Advanced features
 
-> "Dinner at 20:00 requires meat to be defrosted at 15:00"
-
-### M3 - Advanced features
-
-* [ ] Shopping list integration
-* [ ] Recipe support
-* [ ] Mobile companion integration
-* [ ] AI assisted meal planning
+- [ ] Shopping list integration
+- [ ] Recipe support
+- [ ] Mobile companion integration
+- [ ] AI assisted meal planning
 
 ## 🤝 Contributing
 

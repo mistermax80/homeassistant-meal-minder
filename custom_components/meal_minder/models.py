@@ -7,26 +7,33 @@ import uuid
 @dataclass
 class Meal:
     id: str
-    date: str
     time: str
     meal_type: str
     items: list[str] = field(default_factory=list)
 
+    # ricorrenza settimanale
+    weekday: int | None = None
+
+    # eccezione su giorno specifico
+    date: str | None = None
+
     @classmethod
     def create(
         cls,
-        date: str,
         time: str,
         meal_type: str,
         items: list[str],
+        weekday: int | None = None,
+        date: str | None = None,
     ) -> Meal:
 
         return cls(
             id=uuid.uuid4().hex,
-            date=date,
             time=time,
             meal_type=meal_type,
             items=items,
+            weekday=weekday,
+            date=date,
         )
 
     @classmethod
@@ -37,10 +44,11 @@ class Meal:
 
         return cls(
             id=data["id"],
-            date=data["date"],
             time=data["time"],
             meal_type=data["type"],
-            items=data["items"],
+            items=data.get("items", []),
+            weekday=data.get("weekday"),
+            date=data.get("date"),
         )
 
     def to_dict(self) -> dict:
@@ -56,6 +64,67 @@ class Meal:
 
 @dataclass
 class MealPlan:
+
+    id: str
+    name: str
+
+    start_date: str
+    end_date: str
+
     meals: list[Meal] = field(
         default_factory=list
     )
+
+    @classmethod
+    def create(
+        cls,
+        name: str,
+        start_date: str,
+        end_date: str,
+    ) -> MealPlan:
+
+        return cls(
+            id=uuid.uuid4().hex,
+            name=name,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: dict,
+    ) -> MealPlan:
+
+        return cls(
+            id=data["id"],
+            name=data["name"],
+            start_date=data["start_date"],
+            end_date=data["end_date"],
+            meals=[
+                Meal.from_dict(meal)
+                for meal in data.get("meals", [])
+            ],
+        )
+
+    def add_meal(
+        self,
+        meal: Meal,
+    ):
+
+        self.meals.append(
+            meal
+        )
+
+    def to_dict(self) -> dict:
+
+        return {
+            "id": self.id,
+            "name": self.name,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "meals": [
+                meal.to_dict()
+                for meal in self.meals
+            ],
+        }

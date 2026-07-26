@@ -1,13 +1,55 @@
-add_meal:
-  name: Add meal
-  description: Add a meal to the plan
+create_plan:
+  name: Create meal plan
+  description: Create a new meal plan
   fields:
-    date:
-      name: Date
-      description: Meal date (YYYY-MM-DD)
+    name:
+      name: Name
+      description: Meal plan name
       required: true
       selector:
         text:
+
+    start_date:
+      name: Start date
+      description: Plan start date (YYYY-MM-DD)
+      required: true
+      selector:
+        text:
+
+    end_date:
+      name: End date
+      description: Plan end date (YYYY-MM-DD)
+      required: true
+      selector:
+        text:
+
+add_meal:
+  name: Add meal
+  description: Add a meal to the meal plan
+  fields:
+    plan_id:
+      name: Plan ID
+      description: Meal plan identifier
+      required: false
+      selector:
+        text:
+
+    date:
+      name: Date
+      description: Specific meal date (YYYY-MM-DD) for exceptions
+      required: false
+      selector:
+        text:
+
+    weekday:
+      name: Weekday
+      description: Recurring weekday (0=Monday, 6=Sunday)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 6
+          mode: slider
 
     time:
       name: Time
@@ -18,7 +60,7 @@ add_meal:
 
     meal_type:
       name: Meal type
-      description: Breakfast, lunch or dinner
+      description: Breakfast, lunch, snack or dinner
       required: true
       selector:
         select:
@@ -28,12 +70,13 @@ add_meal:
             - dinner
 
     items:
-      name: Meal items
+      name: Items
       description: One item per line
       required: true
       selector:
         text:
           multiline: true
+
 
 remove_meal:
   name: Remove meal
@@ -41,10 +84,11 @@ remove_meal:
   fields:
     id:
       name: Meal ID
-      description: Unique meal identifier
+      description: ID of the meal to remove
       required: true
       selector:
         text:
+
 
 update_meal:
   name: Update meal
@@ -52,17 +96,41 @@ update_meal:
   fields:
     id:
       name: Meal ID
-      description: Unique meal identifier
+      description: ID of the meal to update
       required: true
       selector:
         text:
 
     date:
       name: Date
-      description: Meal date (YYYY-MM-DD)
+      description: Specific meal date (YYYY-MM-DD)
       required: false
       selector:
         text:
+
+    clear_date:
+      name: Clear date
+      description: Remove date exception
+      required: false
+      selector:
+        boolean:
+
+    weekday:
+      name: Weekday
+      description: Recurring weekday (0=Monday, 6=Sunday)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 6
+          mode: slider
+
+    clear_weekday:
+      name: Clear weekday
+      description: Make meal valid every day
+      required: false
+      selector:
+        boolean:
 
     time:
       name: Time
@@ -83,27 +151,45 @@ update_meal:
             - dinner
 
     items:
-      name: Meal items
+      name: Items
       description: One item per line
-      required: true
+      required: false
       selector:
         text:
           multiline: true
+
 
 get_meals:
   name: Get meals
   description: Get meals from the meal plan
   fields:
-    date:
-      name: Date
-      description: Meal date (YYYY-MM-DD)
+    plan_id:
+      name: Plan ID
+      description: Filter by meal plan
       required: false
       selector:
         text:
 
+    date:
+      name: Date
+      description: Filter meals by specific date
+      required: false
+      selector:
+        text:
+
+    weekday:
+      name: Weekday
+      description: Filter meals by weekday (0=Monday, 6=Sunday)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 6
+          mode: slider
+
     meal_type:
       name: Meal type
-      description: Breakfast, lunch or dinner
+      description: Filter by breakfast, lunch or dinner
       required: false
       selector:
         select:
