@@ -92,10 +92,21 @@ class MealMinderCalendar(CalendarEntity):
 
         self._events.sort(key=lambda x: x.start)
 
+    async def _handle_update(self, event):
+        await self._load_events()
+        self.async_write_ha_state()
+
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
 
         await self._load_events()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(
+                "meal_minder_updated",
+                self._handle_update,
+            )
+        )
 
     async def async_update(self):
         await self._load_events()

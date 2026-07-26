@@ -34,3 +34,58 @@ add_meal:
       selector:
         text:
           multiline: true
+
+remove_meal:
+  name: Remove meal
+  description: Remove a meal from the plan
+  fields:
+    id:
+      name: Meal ID
+      description: Unique meal identifier
+      required: true
+      selector:
+        text:
+
+update_meal:
+  name: Update meal
+  description: Update an existing meal
+  fields:
+    id:
+      name: Meal ID
+      description: Unique meal identifier
+      required: true
+      selector:
+        text:
+
+    date:
+      name: Date
+      description: Meal date (YYYY-MM-DD)
+      required: false
+      selector:
+        text:
+
+    time:
+      name: Time
+      description: Meal time
+      required: false
+      selector:
+        time:
+
+    meal_type:
+      name: Meal type
+      description: Breakfast, lunch or dinner
+      required: false
+      selector:
+        select:
+          options:
+            - breakfast
+            - lunch
+            - dinner
+
+    items:
+      name: Meal items
+      description: One item per line
+      required: true
+      selector:
+        text:
+          multiline: true

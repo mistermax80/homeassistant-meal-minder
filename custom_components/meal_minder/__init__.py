@@ -31,19 +31,66 @@ async def async_setup_entry(
                 for item in call.data.get("items", "").splitlines()
                 if item.strip()
             ],
-            meal_time=str(
-                call.data.get("time", "12:00")
-            )[:5],
-)
-
-        hass.bus.async_fire(
-            "meal_minder_updated"
+            meal_time=str(call.data.get("time", "12:00"))[:5],
         )
+
+        hass.bus.async_fire("meal_minder_updated")
+
+    async def remove_meal(call: ServiceCall):
+        removed = await storage.async_remove_meal(
+            call.data["id"]
+        )
+
+        if removed:
+            hass.bus.async_fire(
+                "meal_minder_updated"
+            )
+
+    async def update_meal(call: ServiceCall):
+
+        data = call.data.copy()
+
+        meal_id = data.pop("id")
+
+        if "items" in data:
+            data["items"] = [
+                item.strip()
+                for item in data["items"].splitlines()
+                if item.strip()
+            ]
+
+        if "meal_type" in data:
+            data["type"] = data.pop("meal_type")
+
+        if "time" in data:
+            data["time"] = str(data["time"])[:5]
+
+        updated = await storage.async_update_meal(
+            meal_id,
+            **data,
+        )
+
+        if updated:
+            hass.bus.async_fire(
+                "meal_minder_updated"
+            )
 
     hass.services.async_register(
         DOMAIN,
         "add_meal",
         add_meal,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "remove_meal",
+        remove_meal,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "update_meal",
+        update_meal,
     )
 
     await hass.config_entries.async_forward_entry_setups(
