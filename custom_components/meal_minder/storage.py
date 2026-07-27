@@ -3,6 +3,11 @@ from homeassistant.helpers.storage import Store
 
 from .const import STORAGE_KEY, STORAGE_VERSION
 from .models import Meal, MealPlan
+from datetime import datetime
+
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class MealMinderStorage:
@@ -164,6 +169,89 @@ class MealMinderStorage:
 
         return []
 
+    async def async_get_resolved_meals(
+        self,
+        target_date,
+    ) -> list[dict]:
+        """
+        Resolve meal rules for a specific date.
+
+        Priority:
+        1. Exact date meals (exceptions)
+        2. Weekday recurring meals
+        3. Meals without date/weekday (every day)
+        """
+
+        active_plan_id = self.data.get("active_plan")
+
+        _LOGGER.debug(
+            "Active plan id: %s",
+            active_plan_id,
+        )
+
+        if not active_plan_id:
+            return []
+
+        active_plan = None
+
+        for plan in self.data.get("plans", []):
+
+            if plan["id"] == active_plan_id:
+                active_plan = plan
+                break
+
+        if not active_plan:
+            return []
+
+        _LOGGER.debug(
+            "Target date: %s weekday=%s",
+            target_date,
+            target_date.weekday(),
+        )
+
+        # Check plan validity
+        start_date = datetime.fromisoformat(active_plan["start_date"]).date()
+
+        end_date = datetime.fromisoformat(active_plan["end_date"]).date()
+
+        if not (start_date <= target_date <= end_date):
+            return []
+
+        resolved = []
+
+        weekday = target_date.weekday()
+
+        for meal in active_plan.get(
+            "meals",
+            [],
+        ):
+            _LOGGER.debug(
+                "Checking %s meals for %s",
+                len(active_plan.get("meals", [])),
+                target_date,
+            )
+
+            # Exact date exception
+            if meal.get("date"):
+
+                if meal["date"] == target_date.isoformat():
+                    resolved.append(meal)
+
+                continue
+
+            # Weekly recurring meal
+            if meal.get("weekday") is not None:
+
+                if meal["weekday"] == weekday:
+                    resolved.append(meal)
+
+                continue
+
+            # Every day meal
+            resolved.append(meal)
+
+        return resolved
+
     async def async_get_meals(
         self,
         date: str | None = None,
@@ -199,3 +287,79 @@ class MealMinderStorage:
                 return plan
 
         return None
+
+    async def async_get_plans(self) -> list[dict]:
+
+        return self.data.get(
+            "plans",
+            [],
+        )
+
+    async def async_update_plan(
+        self,
+        plan_id: str,
+        **updates,
+    ) -> bool:
+
+        allowed_fields = {
+            "name",
+            "start_date",
+            "end_date",
+        }
+
+        for plan in self.data.get("plans", []):
+
+            if plan["id"] == plan_id:
+
+                for key, value in updates.items():
+
+                    if key in allowed_fields and value is not None:
+                        plan[key] = value
+
+                await self.async_save()
+
+                return True
+
+        return False
+
+    async def async_delete_plan(
+        self,
+        plan_id: str,
+    ) -> bool:
+
+        plans = self.data.get(
+            "plans",
+            [],
+        )
+
+        original_count = len(plans)
+
+        self.data["plans"] = [plan for plan in plans if plan["id"] != plan_id]
+
+        deleted = len(self.data["plans"]) < original_count
+
+        if deleted:
+
+            if self.data.get("active_plan") == plan_id:
+                self.data["active_plan"] = None
+
+            await self.async_save()
+
+        return deleted
+
+    async def async_set_active_plan(
+        self,
+        plan_id: str,
+    ) -> bool:
+
+        for plan in self.data.get("plans", []):
+
+            if plan["id"] == plan_id:
+
+                self.data["active_plan"] = plan_id
+
+                await self.async_save()
+
+                return True
+
+        return False

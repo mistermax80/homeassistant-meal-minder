@@ -26,6 +26,7 @@ async def async_setup_entry(
 class MealMinderCalendar(CalendarEntity):
 
     _attr_name = "Meal Minder"
+    _attr_unique_id = "meal_minder_calendar"
 
     def __init__(self, storage):
         self.storage = storage
@@ -35,10 +36,12 @@ class MealMinderCalendar(CalendarEntity):
 
         self._events = []
 
-        meals = self.storage.data.get("meals", [])
+        today = dt_util.now().date()
+
+        meals = await self.storage.async_get_resolved_meals(today)
 
         _LOGGER.debug(
-            "Loaded meals: %s",
+            "Loaded resolved meals: %s",
             meals,
         )
 
@@ -50,15 +53,18 @@ class MealMinderCalendar(CalendarEntity):
 
         for meal in meals:
 
-            meal_time = meal.get("time", "12:00")
+            meal_time = meal.get(
+                "time",
+                "12:00",
+            )
 
-            parts = meal_time.split(":")
-
-            hour = int(parts[0])
-            minute = int(parts[1])
+            hour, minute = map(
+                int,
+                meal_time.split(":"),
+            )
 
             start = datetime.combine(
-                datetime.fromisoformat(meal["date"]).date(),
+                today,
                 time(hour, minute),
             )
 

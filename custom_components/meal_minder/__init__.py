@@ -1,11 +1,13 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .storage import MealMinderStorage
 
 PLATFORMS = [
     "calendar",
+    "sensor",
 ]
 
 
@@ -25,6 +27,42 @@ async def async_setup_entry(
 
     hass.data[DOMAIN]["storage"] = storage
 
+    async def get_plans(call: ServiceCall):
+
+        plans = await storage.async_get_plans()
+
+        return {
+            "plans": plans,
+        }
+
+    async def update_plan(call: ServiceCall):
+
+        data = call.data.copy()
+
+        plan_id = data.pop("id")
+
+        updated = await storage.async_update_plan(
+            plan_id,
+            **data,
+        )
+
+        if updated:
+            hass.bus.async_fire("meal_minder_updated")
+
+    async def delete_plan(call: ServiceCall):
+
+        deleted = await storage.async_delete_plan(call.data["id"])
+
+        if deleted:
+            hass.bus.async_fire("meal_minder_updated")
+
+    async def set_active_plan(call: ServiceCall):
+
+        updated = await storage.async_set_active_plan(call.data["id"])
+
+        if updated:
+            hass.bus.async_fire("meal_minder_updated")
+
     async def create_plan(call: ServiceCall):
 
         plan = await storage.async_create_plan(
@@ -32,6 +70,8 @@ async def async_setup_entry(
             start_date=call.data["start_date"],
             end_date=call.data["end_date"],
         )
+
+        hass.bus.async_fire("meal_minder_plan_updated")
 
         return {
             "plan": plan,
@@ -116,12 +156,19 @@ async def async_setup_entry(
             hass.bus.async_fire("meal_minder_updated")
 
     async def get_meals(call: ServiceCall):
-
-        meals = await storage.async_get_meals(
+        """meals = await storage.async_get_meals(
             date=call.data.get("date"),
             weekday=call.data.get("weekday"),
             meal_type=call.data.get("meal_type"),
         )
+
+        return {
+            "meals": meals,
+        }"""
+
+        today = dt_util.now().date()
+
+        meals = await storage.async_get_resolved_meals(today)
 
         return {
             "meals": meals,
@@ -157,6 +204,31 @@ async def async_setup_entry(
         "get_meals",
         get_meals,
         supports_response=SupportsResponse.ONLY,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_plans",
+        get_plans,
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "update_plan",
+        update_plan,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "delete_plan",
+        delete_plan,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "set_active_plan",
+        set_active_plan,
     )
 
     await hass.config_entries.async_forward_entry_setups(
