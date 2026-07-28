@@ -16,7 +16,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
 ) -> bool:
 
-    storage = MealMinderStorage(hass)
+    storage = MealMinderStorage(
+        hass,
+        entry.entry_id,
+    )
 
     await storage.async_load()
 
@@ -25,9 +28,25 @@ async def async_setup_entry(
         {},
     )
 
-    hass.data[DOMAIN]["storage"] = storage
+    hass.data[DOMAIN][entry.entry_id] = storage
+
+    def get_storage(call):
+
+        entry_id = call.data.get("entry_id")
+
+        if not entry_id:
+            raise ValueError("entry_id required")
+
+        storage = hass.data[DOMAIN].get(entry_id)
+
+        if not storage:
+            raise ValueError(f"Unknown entry_id {entry_id}")
+
+        return storage
 
     async def get_plans(call: ServiceCall):
+
+        # storage = get_storage(call)
 
         plans = await storage.async_get_plans()
 
@@ -47,23 +66,40 @@ async def async_setup_entry(
         )
 
         if updated:
-            hass.bus.async_fire("meal_minder_updated")
+            hass.bus.async_fire(
+                "meal_minder_updated",
+                {
+                    "entry_id": entry.entry_id,
+                },
+            )
 
     async def delete_plan(call: ServiceCall):
 
         deleted = await storage.async_delete_plan(call.data["id"])
 
         if deleted:
-            hass.bus.async_fire("meal_minder_updated")
+            hass.bus.async_fire(
+                "meal_minder_updated",
+                {
+                    "entry_id": entry.entry_id,
+                },
+            )
 
     async def set_active_plan(call: ServiceCall):
 
         updated = await storage.async_set_active_plan(call.data["id"])
 
         if updated:
-            hass.bus.async_fire("meal_minder_updated")
+            hass.bus.async_fire(
+                "meal_minder_updated",
+                {
+                    "entry_id": entry.entry_id,
+                },
+            )
 
     async def create_plan(call: ServiceCall):
+
+        # storage = get_storage(call)
 
         plan = await storage.async_create_plan(
             name=call.data["name"],
@@ -71,7 +107,12 @@ async def async_setup_entry(
             end_date=call.data["end_date"],
         )
 
-        hass.bus.async_fire("meal_minder_plan_updated")
+        hass.bus.async_fire(
+            "meal_minder_updated",
+            {
+                "entry_id": entry.entry_id,
+            },
+        )
 
         return {
             "plan": plan,
@@ -79,7 +120,10 @@ async def async_setup_entry(
 
     async def add_meal(call: ServiceCall):
 
+        preparation = build_preparation(call.data)
+
         await storage.async_add_meal(
+            plan_id=call.data["plan_id"],
             meal_type=call.data["meal_type"],
             items=[
                 item.strip()
@@ -101,20 +145,33 @@ async def async_setup_entry(
             date=call.data.get(
                 "date",
             ),
+            preparation=preparation,
         )
 
-        hass.bus.async_fire("meal_minder_updated")
+        hass.bus.async_fire(
+            "meal_minder_updated",
+            {
+                "entry_id": entry.entry_id,
+            },
+        )
 
     async def remove_meal(call: ServiceCall):
 
         removed = await storage.async_remove_meal(call.data["id"])
 
         if removed:
-            hass.bus.async_fire("meal_minder_updated")
+            hass.bus.async_fire(
+                "meal_minder_updated",
+                {
+                    "entry_id": entry.entry_id,
+                },
+            )
 
     async def update_meal(call: ServiceCall):
 
         data = call.data.copy()
+
+        preparation = build_preparation(data)
 
         meal_id = data.pop("id")
 
@@ -146,6 +203,17 @@ async def async_setup_entry(
 
         data.pop("clear_weekday", None)
 
+        data["preparation"] = preparation
+
+        if data.get("clear_preparation"):
+
+            data["preparation"] = None
+
+            data.pop(
+                "clear_preparation",
+                None,
+            )
+
         updated = await storage.async_update_meal(
             meal_id,
             **data,
@@ -153,7 +221,12 @@ async def async_setup_entry(
 
         if updated:
 
-            hass.bus.async_fire("meal_minder_updated")
+            hass.bus.async_fire(
+                "meal_minder_updated",
+                {
+                    "entry_id": entry.entry_id,
+                },
+            )
 
     async def get_meals(call: ServiceCall):
         """meals = await storage.async_get_meals(
@@ -172,6 +245,38 @@ async def async_setup_entry(
 
         return {
             "meals": meals,
+        }
+
+
+    def build_preparation(data: dict) -> dict | None:
+
+        offset = data.get("preparation_offset")
+
+        items = [
+            item.strip()
+            for item in data.get(
+                "preparation_items",
+                "",
+            ).splitlines()
+            if item.strip()
+        ]
+
+        if offset is None and not items:
+            return None
+
+        if offset is None and items:
+            raise ValueError(
+                "Preparation offset required when preparation items are set"
+            )
+
+        if offset is not None and not items:
+            raise ValueError(
+                "Preparation items required when offset is set"
+            )
+
+        return {
+            "offset": int(offset),
+            "items": items,
         }
 
     hass.services.async_register(
@@ -237,3 +342,21 @@ async def async_setup_entry(
     )
 
     return True
+
+async def async_unload_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> bool:
+
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry,
+        PLATFORMS,
+    )
+
+    if unload_ok:
+        hass.data[DOMAIN].pop(
+            entry.entry_id,
+            None,
+        )
+
+    return unload_ok

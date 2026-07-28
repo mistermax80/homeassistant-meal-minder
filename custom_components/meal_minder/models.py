@@ -10,12 +10,11 @@ class Meal:
     time: str
     meal_type: str
     items: list[str] = field(default_factory=list)
-
     # ricorrenza settimanale
     weekday: int | None = None
-
     # eccezione su giorno specifico
     date: str | None = None
+    preparation: dict | None = None
 
     @classmethod
     def create(
@@ -25,6 +24,7 @@ class Meal:
         items: list[str],
         weekday: int | None = None,
         date: str | None = None,
+        preparation=None,
     ) -> Meal:
 
         return cls(
@@ -34,6 +34,7 @@ class Meal:
             items=items,
             weekday=weekday,
             date=date,
+            preparation=preparation,
         )
 
     @classmethod
@@ -49,6 +50,7 @@ class Meal:
             items=data.get("items", []),
             weekday=data.get("weekday"),
             date=data.get("date"),
+            preparation=data.get("preparation"),
         )
 
     def to_dict(self) -> dict:

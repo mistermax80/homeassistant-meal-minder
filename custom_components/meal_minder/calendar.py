@@ -18,19 +18,46 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ):
 
-    storage = hass.data[DOMAIN]["storage"]
+    storage = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities([MealMinderCalendar(storage)])
+    async_add_entities(
+        [
+            MealMinderCalendar(
+                storage,
+                entry,
+            )
+        ]
+    )
 
 
 class MealMinderCalendar(CalendarEntity):
 
     _attr_name = "Meal Minder"
-    _attr_unique_id = "meal_minder_calendar"
 
-    def __init__(self, storage):
+    def __init__(
+        self,
+        storage,
+        entry,
+    ):
         self.storage = storage
+        self.entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._events = []
+
+    @property
+    def device_info(self):
+
+        return {
+            "identifiers": {
+                (
+                    DOMAIN,
+                    self.entry.entry_id,
+                )
+            },
+            "name": self.entry.title,
+            "manufacturer": "Meal Minder",
+            "model": "Diet Planner",
+        }
 
     async def _load_events(self):
 
@@ -98,7 +125,85 @@ class MealMinderCalendar(CalendarEntity):
 
         self._events.sort(key=lambda x: x.start)
 
+    async def _get_events_for_range(
+        self,
+        start_date,
+        end_date,
+    ):
+
+        events = []
+
+        meal_names = {
+            "breakfast": "🍳 Colazione",
+            "lunch": "🍝 Pranzo",
+            "dinner": "🍽 Cena",
+        }
+
+        current_date = start_date.date()
+
+        end = end_date.date()
+
+        while current_date <= end:
+
+            meals = await self.storage.async_get_resolved_meals(
+                current_date
+            )
+
+            for meal in meals:
+
+                meal_time = meal.get(
+                    "time",
+                    "12:00",
+                )
+
+                hour, minute = map(
+                    int,
+                    meal_time.split(":"),
+                )
+
+                start = datetime.combine(
+                    current_date,
+                    time(hour, minute),
+                )
+
+                start = dt_util.as_local(start)
+
+                event_end = start + timedelta(
+                    minutes=30
+                )
+
+                events.append(
+                    CalendarEvent(
+                        start=start,
+                        end=event_end,
+                        summary=meal_names.get(
+                            meal.get("type"),
+                            meal.get("type"),
+                        ),
+                        description="\n".join(
+                            f"• {item}"
+                            for item in meal.get(
+                                "items",
+                                [],
+                            )
+                        ),
+                        uid=f"{meal['id']}_{current_date}",
+                    )
+                )
+
+            current_date += timedelta(days=1)
+
+        events.sort(
+            key=lambda x: x.start
+        )
+
+        return events
+
     async def _handle_update(self, event):
+
+        if event.data.get("entry_id") != self.storage.entry_id:
+            return
+
         await self._load_events()
         self.async_write_ha_state()
 
@@ -117,6 +222,100 @@ class MealMinderCalendar(CalendarEntity):
     async def async_update(self):
         await self._load_events()
 
+    async def _get_events_for_range(
+        self,
+        start_date,
+        end_date,
+    ):
+
+        events = []
+
+        meal_names = {
+            "breakfast": "🍳 Colazione",
+            "lunch": "🍝 Pranzo",
+            "dinner": "🍽 Cena",
+        }
+
+        current_date = start_date.date()
+
+        final_date = end_date.date()
+
+        while current_date <= final_date:
+
+            meals = await self.storage.async_get_resolved_meals(
+                current_date,
+            )
+
+            for meal in meals:
+
+                meal_time = meal.get(
+                    "time",
+                    "12:00",
+                )
+
+                hour, minute = map(
+                    int,
+                    meal_time.split(":"),
+                )
+
+                start = datetime.combine(
+                    current_date,
+                    time(hour, minute),
+                )
+
+                start = dt_util.as_local(
+                    start
+                )
+
+                end = start + timedelta(
+                    minutes=30
+                )
+
+                description = "\n".join(
+                    f"• {item}"
+                    for item in meal.get(
+                        "items",
+                        [],
+                    )
+                )
+
+                preparation = meal.get(
+                    "preparation"
+                )
+
+                if preparation:
+
+                    description += "\n\nPreparazione:"
+
+                    for item in preparation.get(
+                        "items",
+                        [],
+                    ):
+                        description += f"\n• {item}"
+
+                events.append(
+                    CalendarEvent(
+                        start=start,
+                        end=end,
+                        summary=meal_names.get(
+                            meal.get("type"),
+                            meal.get("type"),
+                        ),
+                        description=description,
+                        uid=f"{meal['id']}_{current_date}",
+                    )
+                )
+
+            current_date += timedelta(
+                days=1
+            )
+
+        events.sort(
+            key=lambda x: x.start
+        )
+
+        return events
+
     async def async_get_events(
         self,
         hass: HomeAssistant,
@@ -124,11 +323,10 @@ class MealMinderCalendar(CalendarEntity):
         end_date,
     ):
 
-        await self._load_events()
-
-        return [
-            event for event in self._events if start_date <= event.start <= end_date
-        ]
+        return await self._get_events_for_range(
+            start_date,
+            end_date,
+        )
 
     @property
     def event(self):

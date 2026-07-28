@@ -12,11 +12,18 @@ _LOGGER = logging.getLogger(__name__)
 
 class MealMinderStorage:
 
-    def __init__(self, hass: HomeAssistant):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+    ):
+
+        self.entry_id = entry_id
+
         self.store = Store(
             hass,
             STORAGE_VERSION,
-            STORAGE_KEY,
+            f"{STORAGE_KEY}_{entry_id}",
         )
 
         self.data = {}
@@ -52,11 +59,13 @@ class MealMinderStorage:
 
     async def async_add_meal(
         self,
+        plan_id: str,
         meal_type: str,
         items: list[str],
         meal_time: str = "12:00",
         weekday: int | None = None,
         date: str | None = None,
+        preparation: dict | None = None,
     ):
 
         # Meal can be added in three ways:
@@ -73,16 +82,12 @@ class MealMinderStorage:
             items=items,
             weekday=weekday,
             date=date,
+            preparation=preparation,
         )
-
-        active_plan_id = self.data.get("active_plan")
-
-        if not active_plan_id:
-            raise ValueError("No active meal plan")
 
         for plan in self.data.get("plans", []):
 
-            if plan["id"] == active_plan_id:
+            if plan["id"] == plan_id:
 
                 plan.setdefault("meals", [])
 
@@ -92,7 +97,7 @@ class MealMinderStorage:
 
                 return
 
-        raise ValueError("Active meal plan not found")
+        raise ValueError(f"Meal plan {plan_id} not found")
 
     async def async_remove_meal(
         self,
@@ -132,6 +137,7 @@ class MealMinderStorage:
             "time",
             "type",
             "items",
+            "preparation",  
         }
 
         active_plan = self.data.get("active_plan")
@@ -221,15 +227,16 @@ class MealMinderStorage:
 
         weekday = target_date.weekday()
 
+        _LOGGER.debug(
+            "Checking %s meals for %s",
+            len(active_plan.get("meals", [])),
+            target_date,
+        )
+
         for meal in active_plan.get(
             "meals",
             [],
         ):
-            _LOGGER.debug(
-                "Checking %s meals for %s",
-                len(active_plan.get("meals", [])),
-                target_date,
-            )
 
             # Exact date exception
             if meal.get("date"):

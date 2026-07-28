@@ -52,6 +52,25 @@ add_meal:
         text:
           multiline: true
 
+    preparation_offset:
+      name: Preparation offset
+      description: Minutes before the meal for preparation
+      required: false
+      selector:
+        number:
+          min: -1440
+          max: 0
+          step: 15
+          mode: box
+
+    preparation_items:
+      name: Preparation items
+      description: Preparation tasks
+      required: false
+      selector:
+        text:
+          multiline: true
+
 remove_meal:
   name: Remove meal
   description: Remove a meal from the plan
@@ -130,6 +149,32 @@ update_meal:
       selector:
         text:
           multiline: true
+
+    preparation_offset:
+      name: Preparation offset
+      description: Minutes before the meal for preparation
+      required: false
+      selector:
+        number:
+          min: -1440
+          max: 0
+          step: 15
+          mode: box
+
+    preparation_items:
+      name: Preparation items
+      description: Preparation tasks
+      required: false
+      selector:
+        text:
+          multiline: true
+
+    clear_preparation:
+      name: Clear preparation
+      description: Remove preparation data
+      required: false
+      selector:
+        boolean:
 
 get_meals:
   name: Get meals
