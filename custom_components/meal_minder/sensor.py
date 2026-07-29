@@ -231,6 +231,9 @@ class MealMinderTodayMealsSensor(SensorEntity):
 
         await super().async_added_to_hass()
 
+        await self.async_update()
+        self.async_write_ha_state()
+
         self.async_on_remove(
             self.hass.bus.async_listen(
                 "meal_minder_updated",
@@ -251,15 +254,14 @@ class MealMinderNextPreparationSensor(SensorEntity):
 
     _attr_name = "Next Preparation"
     _attr_icon = "mdi:calendar-clock"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, storage, entry):
 
         self.storage = storage
         self.entry = entry
 
-        self._attr_unique_id = (
-            f"{self.storage.entry_id}_next_preparation"
-        )
+        self._attr_unique_id = f"{self.storage.entry_id}_next_preparation"
 
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
@@ -291,9 +293,7 @@ class MealMinderNextPreparationSensor(SensorEntity):
 
         for meal in meals:
 
-            preparation = meal.get(
-                "preparation"
-            )
+            preparation = meal.get("preparation")
 
             if not preparation:
                 continue
@@ -316,17 +316,12 @@ class MealMinderNextPreparationSensor(SensorEntity):
                 minute=minute,
             )
 
-            meal_datetime = dt_util.as_local(
-                meal_datetime
-            )
+            meal_datetime = dt_util.as_local(meal_datetime)
 
-            preparation_datetime = (
-                meal_datetime
-                + timedelta(
-                    minutes=preparation.get(
-                        "offset",
-                        0,
-                    )
+            preparation_datetime = meal_datetime + timedelta(
+                minutes=preparation.get(
+                    "offset",
+                    0,
                 )
             )
 
@@ -342,23 +337,15 @@ class MealMinderNextPreparationSensor(SensorEntity):
                         "meal": meal,
                     }
 
-
         if next_preparation:
 
             meal = next_preparation["meal"]
 
-            self._attr_native_value = (
-                next_preparation["datetime"]
-                .strftime("%H:%M")
-            )
+            self._attr_native_value = next_preparation["datetime"]
 
             self._attr_extra_state_attributes = {
-                "meal_type": meal.get(
-                    "type"
-                ),
-                "meal_time": meal.get(
-                    "time"
-                ),
+                "meal_type": meal.get("type"),
+                "meal_time": meal.get("time"),
                 "items": meal.get(
                     "preparation",
                     {},
@@ -375,10 +362,12 @@ class MealMinderNextPreparationSensor(SensorEntity):
 
             self._attr_extra_state_attributes = {}
 
-
     async def async_added_to_hass(self):
 
         await super().async_added_to_hass()
+
+        await self.async_update()
+        self.async_write_ha_state()
 
         self.async_on_remove(
             self.hass.bus.async_listen(
@@ -386,7 +375,6 @@ class MealMinderNextPreparationSensor(SensorEntity):
                 self._handle_update,
             )
         )
-
 
     async def _handle_update(self, event):
 
