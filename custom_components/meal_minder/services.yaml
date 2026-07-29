@@ -298,3 +298,17 @@ set_active_plan:
       required: true
       selector:
         text:
+
+export_config:
+  name: Export configuration
+
+import_config:
+  name: Import configuration
+  description: Import a Meal Minder configuration export file
+  fields:
+    path:
+      name: File path
+      description: Full path of the Meal Minder JSON export file
+      required: true
+      selector:
+        text:

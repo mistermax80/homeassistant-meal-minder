@@ -31,12 +31,141 @@ async def async_setup_entry(
                 storage,
                 entry,
             ),
-            MealMinderNextPreparationSensor(
+            MealMinderNextPreparationReminderSensor(
+                storage,
+                entry,
+            ),
+            MealMinderNextMealReminderSensor(
                 storage,
                 entry,
             ),
         ]
     )
+
+
+async def find_next_meal(storage):
+
+    now = dt_util.now()
+
+    for days_offset in range(7):
+
+        target_date = now.date() + timedelta(days=days_offset)
+
+        meals = await storage.async_get_resolved_meals(target_date)
+
+        candidates = []
+
+        for meal in meals:
+
+            meal_time = meal.get(
+                "time",
+                "12:00",
+            )
+
+            hour, minute = map(
+                int,
+                meal_time.split(":"),
+            )
+
+            meal_datetime = datetime.combine(
+                target_date,
+                datetime.min.time(),
+            ).replace(
+                hour=hour,
+                minute=minute,
+            )
+
+            meal_datetime = dt_util.as_local(meal_datetime)
+
+            _LOGGER.debug(
+                "Meal candidate %s at %s, now=%s",
+                meal.get("type"),
+                meal_datetime,
+                now,
+            )
+
+            if meal_datetime > now:
+
+                candidates.append(
+                    {
+                        "datetime": meal_datetime,
+                        "meal": meal,
+                    }
+                )
+
+        if candidates:
+
+            return min(
+                candidates,
+                key=lambda x: x["datetime"],
+            )
+
+    return None
+
+
+async def find_next_preparation(storage):
+
+    now = dt_util.now()
+
+    for days_offset in range(7):
+
+        target_date = now.date() + timedelta(days=days_offset)
+
+        meals = await storage.async_get_resolved_meals(target_date)
+
+        candidates = []
+
+        for meal in meals:
+
+            preparation = meal.get("preparation")
+
+            if not preparation:
+                continue
+
+            meal_time = meal.get(
+                "time",
+                "12:00",
+            )
+
+            hour, minute = map(
+                int,
+                meal_time.split(":"),
+            )
+
+            meal_datetime = datetime.combine(
+                target_date,
+                datetime.min.time(),
+            ).replace(
+                hour=hour,
+                minute=minute,
+            )
+
+            meal_datetime = dt_util.as_local(meal_datetime)
+
+            preparation_datetime = meal_datetime + timedelta(
+                minutes=preparation.get(
+                    "offset",
+                    0,
+                )
+            )
+
+            if preparation_datetime > now:
+
+                candidates.append(
+                    {
+                        "datetime": preparation_datetime,
+                        "meal": meal,
+                    }
+                )
+
+        if candidates:
+
+            return min(
+                candidates,
+                key=lambda x: x["datetime"],
+            )
+
+    return None
 
 
 class MealMinderNextMealSensor(SensorEntity):
@@ -72,7 +201,7 @@ class MealMinderNextMealSensor(SensorEntity):
 
     async def async_update(self):
 
-        next_meal = await self._find_next_meal()
+        next_meal = await find_next_meal(self.storage)
 
         if next_meal:
 
@@ -114,65 +243,6 @@ class MealMinderNextMealSensor(SensorEntity):
 
         await self.async_update()
         self.async_write_ha_state()
-
-    async def _find_next_meal(self):
-
-        now = dt_util.now()
-
-        for days_offset in range(7):
-
-            target_date = now.date() + timedelta(days=days_offset)
-
-            meals = await self.storage.async_get_resolved_meals(target_date)
-
-            candidates = []
-
-            for meal in meals:
-
-                meal_time = meal.get(
-                    "time",
-                    "12:00",
-                )
-
-                hour, minute = map(
-                    int,
-                    meal_time.split(":"),
-                )
-
-                meal_datetime = datetime.combine(
-                    target_date,
-                    datetime.min.time(),
-                ).replace(
-                    hour=hour,
-                    minute=minute,
-                )
-
-                meal_datetime = dt_util.as_local(meal_datetime)
-
-                _LOGGER.debug(
-                    "Meal candidate %s at %s, now=%s",
-                    meal.get("type"),
-                    meal_datetime,
-                    now,
-                )
-
-                if meal_datetime > now:
-
-                    candidates.append(
-                        {
-                            "datetime": meal_datetime,
-                            "meal": meal,
-                        }
-                    )
-
-            if candidates:
-
-                return min(
-                    candidates,
-                    key=lambda x: x["datetime"],
-                )
-
-        return None
 
 
 class MealMinderTodayMealsSensor(SensorEntity):
@@ -250,9 +320,9 @@ class MealMinderTodayMealsSensor(SensorEntity):
         self.async_write_ha_state()
 
 
-class MealMinderNextPreparationSensor(SensorEntity):
+class MealMinderNextPreparationReminderSensor(SensorEntity):
 
-    _attr_name = "Next Preparation"
+    _attr_name = "Next Preparation Reminder"
     _attr_icon = "mdi:calendar-clock"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
@@ -261,7 +331,7 @@ class MealMinderNextPreparationSensor(SensorEntity):
         self.storage = storage
         self.entry = entry
 
-        self._attr_unique_id = f"{self.storage.entry_id}_next_preparation"
+        self._attr_unique_id = f"{self.storage.entry_id}_next_preparation_reminder"
 
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
@@ -283,59 +353,7 @@ class MealMinderNextPreparationSensor(SensorEntity):
 
     async def async_update(self):
 
-        now = dt_util.now()
-
-        today = now.date()
-
-        meals = await self.storage.async_get_resolved_meals(today)
-
-        next_preparation = None
-
-        for meal in meals:
-
-            preparation = meal.get("preparation")
-
-            if not preparation:
-                continue
-
-            meal_time = meal.get(
-                "time",
-                "12:00",
-            )
-
-            hour, minute = map(
-                int,
-                meal_time.split(":"),
-            )
-
-            meal_datetime = datetime.combine(
-                today,
-                datetime.min.time(),
-            ).replace(
-                hour=hour,
-                minute=minute,
-            )
-
-            meal_datetime = dt_util.as_local(meal_datetime)
-
-            preparation_datetime = meal_datetime + timedelta(
-                minutes=preparation.get(
-                    "offset",
-                    0,
-                )
-            )
-
-            if preparation_datetime > now:
-
-                if (
-                    next_preparation is None
-                    or preparation_datetime < next_preparation["datetime"]
-                ):
-
-                    next_preparation = {
-                        "datetime": preparation_datetime,
-                        "meal": meal,
-                    }
+        next_preparation = await find_next_preparation(self.storage)
 
         if next_preparation:
 
@@ -359,7 +377,6 @@ class MealMinderNextPreparationSensor(SensorEntity):
         else:
 
             self._attr_native_value = None
-
             self._attr_extra_state_attributes = {}
 
     async def async_added_to_hass(self):
@@ -383,4 +400,71 @@ class MealMinderNextPreparationSensor(SensorEntity):
 
         await self.async_update()
 
+        self.async_write_ha_state()
+
+
+class MealMinderNextMealReminderSensor(SensorEntity):
+
+    _attr_name = "Next Meal Reminder"
+    _attr_icon = "mdi:calendar-alert"
+
+    def __init__(self, storage, entry):
+
+        self.storage = storage
+        self.entry = entry
+
+        self._attr_unique_id = f"{entry.entry_id}_next_meal_reminder"
+
+        self._attr_device_class = "timestamp"
+
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+
+    @property
+    def device_info(self):
+
+        return {
+            "identifiers": {
+                (
+                    DOMAIN,
+                    self.entry.entry_id,
+                )
+            },
+            "name": self.entry.title,
+            "manufacturer": "Meal Minder",
+            "model": "Diet Planner",
+        }
+
+    async def async_update(self):
+
+        next_meal = await find_next_meal(self.storage)
+
+        if next_meal:
+
+            reminder_time = next_meal["datetime"] - timedelta(hours=1)
+
+            meal = next_meal["meal"]
+
+            self._attr_native_value = reminder_time
+
+            self._attr_extra_state_attributes = {
+                "meal_type": meal.get("type"),
+                "meal_time": meal.get("time"),
+                "items": meal.get(
+                    "items",
+                    [],
+                ),
+                "datetime": reminder_time.isoformat(),
+            }
+
+        else:
+
+            self._attr_native_value = None
+            self._attr_extra_state_attributes = {}
+
+    async def async_added_to_hass(self):
+
+        await super().async_added_to_hass()
+
+        await self.async_update()
         self.async_write_ha_state()

@@ -1,10 +1,24 @@
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
-
-from .const import STORAGE_KEY, STORAGE_VERSION
-from .models import Meal, MealPlan
+from pathlib import Path
+import json
 from datetime import datetime
 
+from .const import (
+    DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+    STORAGE_MINOR_VERSION,
+    EXPORT_VERSION,
+    EXPORT_FILENAME,
+)
+from .models import Meal, MealPlan
+from datetime import datetime
+from pathlib import Path
+
+import json
+from homeassistant.util import dt as dt_util
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,7 +32,10 @@ class MealMinderStorage:
         entry_id: str,
     ):
 
+        self.hass = hass
         self.entry_id = entry_id
+
+        self.storage_key = f"{STORAGE_KEY}_{entry_id}"
 
         self.store = Store(
             hass,
@@ -137,7 +154,7 @@ class MealMinderStorage:
             "time",
             "type",
             "items",
-            "preparation",  
+            "preparation",
         }
 
         active_plan = self.data.get("active_plan")
@@ -370,3 +387,127 @@ class MealMinderStorage:
                 return True
 
         return False
+
+    async def async_export(self):
+
+        data = await self.store.async_load()
+
+        export_data = self._build_export_data()
+
+        timestamp = dt_util.now().replace(microsecond=0).isoformat()
+
+        filename = EXPORT_FILENAME.format(timestamp=timestamp)
+
+        path = self.hass.config.path(filename)
+
+        await self.hass.async_add_executor_job(
+            self._write_export_file,
+            path,
+            export_data,
+        )
+
+        return path
+
+    def _write_export_file(self, path, data):
+
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(
+                data,
+                file,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+    def _build_export_data(self):
+        return {
+            "integration": DOMAIN,
+            "version": STORAGE_VERSION,
+            "minor_version": STORAGE_MINOR_VERSION,
+            "export_date": dt_util.now().isoformat(),
+            "export_version": EXPORT_VERSION,
+            "source_storage_key": self.storage_key,
+            "data": self.data,
+        }
+    
+    async def async_import(self, path: str):
+
+        import_path = Path(path)
+
+        if not import_path.exists():
+            raise FileNotFoundError(f"Import file not found: {path}")
+
+        if import_path.suffix.lower() != ".json":
+            raise HomeAssistantError(
+                "Only JSON export files are supported"
+            )
+        #
+        # Lettura file non bloccante
+        #
+        content = await self.hass.async_add_executor_job(
+            import_path.read_text,
+            "utf-8",
+        )
+
+        export_data = json.loads(content)
+
+        #
+        # Validazione integrazione
+        #
+        if export_data.get("integration") != DOMAIN:
+            raise ValueError("Invalid Meal Minder export file")
+
+        #
+        # Validazione versione export
+        #
+        export_version = export_data.get(
+            "export_version",
+            1,
+        )
+
+        if export_version > 1:
+            raise ValueError(f"Unsupported export version {export_version}")
+
+        #
+        # Recupero dati
+        #
+        imported_data = export_data.get("data")
+
+        if not imported_data:
+            raise ValueError("Missing data section")
+
+        if "plans" not in imported_data:
+            raise ValueError("Invalid meal plan data")
+
+        #
+        # Backup prima dell'import
+        #
+        backup_data = self._build_export_data()
+
+        timestamp = dt_util.now().replace(microsecond=0).isoformat()
+
+        filename = EXPORT_FILENAME.format(timestamp=timestamp)
+
+        backup_path = self.hass.config.path(filename)
+
+        await self.hass.async_add_executor_job(
+            self._write_export_file,
+            backup_path,
+            backup_data,
+        )
+
+        #
+        # Import dati nuovi
+        #
+        self.data = imported_data
+
+        await self.store.async_save(self.data)
+
+        #
+        # Aggiorna sensori/calendari
+        #
+        self.hass.bus.async_fire("meal_minder_updated", {"entry_id": self.entry_id})
+
+        return {
+            "backup": str(backup_path),
+            "plans": len(self.data.get("plans", [])),
+        }

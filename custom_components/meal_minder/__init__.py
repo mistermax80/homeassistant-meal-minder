@@ -1,14 +1,20 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
+from homeassistant.components import persistent_notification
+
 
 from .const import DOMAIN
 from .storage import MealMinderStorage
+import logging
 
 PLATFORMS = [
     "calendar",
     "sensor",
 ]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -247,7 +253,6 @@ async def async_setup_entry(
             "meals": meals,
         }
 
-
     def build_preparation(data: dict) -> dict | None:
 
         offset = data.get("preparation_offset")
@@ -270,14 +275,50 @@ async def async_setup_entry(
             )
 
         if offset is not None and not items:
-            raise ValueError(
-                "Preparation items required when offset is set"
-            )
+            raise ValueError("Preparation items required when offset is set")
 
         return {
             "offset": int(offset),
             "items": items,
         }
+
+    async def export_config(call):
+
+        path = await storage.async_export()
+
+        persistent_notification.async_create(
+            hass,
+            message=f"File creato:\n\n📄 {path}",
+            title="Meal Minder Export",
+        )
+
+        _LOGGER.info(
+            "Configuration exported to %s",
+            path,
+        )
+
+    async def import_config(call):
+
+        path = call.data["path"]
+
+        storages = hass.data[DOMAIN]
+
+        if not storages:
+            raise HomeAssistantError(
+                "Meal Minder not initialized"
+            )
+
+        # prende la prima configurazione attiva
+        entry_id = next(iter(storages))
+
+        storage = storages[entry_id]
+
+        result = await storage.async_import(path)
+
+        _LOGGER.info(
+            "Meal Minder import completed: %s",
+            result,
+        )
 
     hass.services.async_register(
         DOMAIN,
@@ -336,12 +377,25 @@ async def async_setup_entry(
         set_active_plan,
     )
 
+    hass.services.async_register(
+        DOMAIN,
+        "export_config",
+        export_config,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "import_config",
+        import_config,
+    )
+
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
     )
 
     return True
+
 
 async def async_unload_entry(
     hass: HomeAssistant,
