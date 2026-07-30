@@ -1,0 +1,66 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Meal Minder",
+        "description": "Configura il tuo pianificatore pasti",
+        "data": {
+          "name": "Nome integrazione"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Meal Minder è già configurato"
+    }
+  },
+  "services": {
+    "create_plan": {
+      "name": "Crea piano pasti",
+      "description": "Crea un nuovo piano pasti"
+    },
+    "add_meal": {
+      "name": "Aggiungi pasto",
+      "description": "Aggiunge un pasto al piano"
+    },
+    "update_meal": {
+      "name": "Modifica pasto",
+      "description": "Modifica un pasto esistente"
+    },
+    "remove_meal": {
+      "name": "Rimuovi pasto",
+      "description": "Rimuove un pasto dal piano"
+    },
+    "get_meals": {
+      "name": "Recupera pasti",
+      "description": "Recupera i pasti del piano attivo"
+    },
+    "create_plan": {
+      "name": "Crea piano pasti",
+      "description": "Crea un nuovo piano pasti"
+    },
+    "get_plans": {
+      "name": "Recupera piani pasti",
+      "description": "Recupera i piani disponibili"
+    },
+    "update_plan": {
+      "name": "Modifica piano pasti",
+      "description": "Modifica un piano esistente"
+    },
+    "delete_plan": {
+      "name": "Elimina piano pasti",
+      "description": "Elimina un piano pasti"
+    },
+    "set_active_plan": {
+      "name": "Imposta piano attivo",
+      "description": "Imposta il piano utilizzato da Meal Minder"
+    },
+    "export_config": {
+      "name": "Esporta configurazione",
+      "description": "Esporta la configurazione Meal Minder"
+    },
+    "import_config": {
+      "name": "Importa configurazione",
+      "description": "Importa una configurazione Meal Minder"
+    }
+  }
+}

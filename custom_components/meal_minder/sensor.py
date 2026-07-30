@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta
 
-from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-
+from .entity import MealMinderSensorEntity
 from .const import DOMAIN
 
 import logging
@@ -167,8 +166,7 @@ async def find_next_preparation(storage):
 
     return None
 
-
-class MealMinderNextMealSensor(SensorEntity):
+class MealMinderNextMealSensor(MealMinderSensorEntity, SensorEntity):
 
     _attr_name = "Next Meal"
     _attr_icon = "mdi:silverware"
@@ -176,28 +174,15 @@ class MealMinderNextMealSensor(SensorEntity):
 
     def __init__(self, storage, entry):
 
-        self.storage = storage
-        self.entry = entry
+        super().__init__(
+            storage,
+            entry,
+        )
 
         self._attr_unique_id = f"{self.storage.entry_id}_next_meal"
 
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
-
-    @property
-    def device_info(self):
-
-        return {
-            "identifiers": {
-                (
-                    DOMAIN,
-                    self.entry.entry_id,
-                )
-            },
-            "name": self.entry.title,
-            "manufacturer": "Meal Minder",
-            "model": "Diet Planner",
-        }
 
     async def async_update(self):
 
@@ -245,37 +230,24 @@ class MealMinderNextMealSensor(SensorEntity):
         self.async_write_ha_state()
 
 
-class MealMinderTodayMealsSensor(SensorEntity):
+class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
 
     _attr_icon = "mdi:calendar-today"
 
     def __init__(self, storage, entry):
 
-        self.storage = storage
-        self.entry = entry
+        super().__init__(
+            storage,
+            entry,
+        )
 
         self._attr_unique_id = f"{self.storage.entry_id}_today_meals"
 
-        self._attr_name = "Meal Minder Today's Meals"
+        self._attr_name = "Today Meals"
 
         self._attr_native_value = 0
 
         self._attr_extra_state_attributes = {}
-
-    @property
-    def device_info(self):
-
-        return {
-            "identifiers": {
-                (
-                    DOMAIN,
-                    self.entry.entry_id,
-                )
-            },
-            "name": self.entry.title,
-            "manufacturer": "Meal Minder",
-            "model": "Diet Planner",
-        }
 
     async def async_update(self):
 
@@ -320,7 +292,7 @@ class MealMinderTodayMealsSensor(SensorEntity):
         self.async_write_ha_state()
 
 
-class MealMinderNextPreparationReminderSensor(SensorEntity):
+class MealMinderNextPreparationReminderSensor(MealMinderSensorEntity, SensorEntity):
 
     _attr_name = "Next Preparation Reminder"
     _attr_icon = "mdi:calendar-clock"
@@ -328,28 +300,15 @@ class MealMinderNextPreparationReminderSensor(SensorEntity):
 
     def __init__(self, storage, entry):
 
-        self.storage = storage
-        self.entry = entry
+        super().__init__(
+            storage,
+            entry,
+        )
 
         self._attr_unique_id = f"{self.storage.entry_id}_next_preparation_reminder"
 
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
-
-    @property
-    def device_info(self):
-
-        return {
-            "identifiers": {
-                (
-                    DOMAIN,
-                    self.entry.entry_id,
-                )
-            },
-            "name": self.entry.title,
-            "manufacturer": "Meal Minder",
-            "model": "Diet Planner",
-        }
 
     async def async_update(self):
 
@@ -403,37 +362,23 @@ class MealMinderNextPreparationReminderSensor(SensorEntity):
         self.async_write_ha_state()
 
 
-class MealMinderNextMealReminderSensor(SensorEntity):
+class MealMinderNextMealReminderSensor(MealMinderSensorEntity, SensorEntity):
 
     _attr_name = "Next Meal Reminder"
     _attr_icon = "mdi:calendar-alert"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, storage, entry):
 
-        self.storage = storage
-        self.entry = entry
+        super().__init__(
+            storage,
+            entry,
+        )
 
         self._attr_unique_id = f"{entry.entry_id}_next_meal_reminder"
 
-        self._attr_device_class = "timestamp"
-
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
-
-    @property
-    def device_info(self):
-
-        return {
-            "identifiers": {
-                (
-                    DOMAIN,
-                    self.entry.entry_id,
-                )
-            },
-            "name": self.entry.title,
-            "manufacturer": "Meal Minder",
-            "model": "Diet Planner",
-        }
 
     async def async_update(self):
 
@@ -467,4 +412,20 @@ class MealMinderNextMealReminderSensor(SensorEntity):
         await super().async_added_to_hass()
 
         await self.async_update()
+        self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(
+                "meal_minder_updated",
+                self._handle_update,
+            )
+        )
+
+    async def _handle_update(self, event):
+
+        if event.data.get("entry_id") != self.entry.entry_id:
+            return
+
+        await self.async_update()
+
         self.async_write_ha_state()

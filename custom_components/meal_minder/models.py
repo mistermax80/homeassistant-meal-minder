@@ -109,15 +109,6 @@ class MealPlan:
             ],
         )
 
-    def add_meal(
-        self,
-        meal: Meal,
-    ):
-
-        self.meals.append(
-            meal
-        )
-
     def to_dict(self) -> dict:
 
         return {

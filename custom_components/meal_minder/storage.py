@@ -1,8 +1,8 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 from pathlib import Path
-import json
 from datetime import datetime
 
 from .const import (
@@ -14,11 +14,8 @@ from .const import (
     EXPORT_FILENAME,
 )
 from .models import Meal, MealPlan
-from datetime import datetime
-from pathlib import Path
 
 import json
-from homeassistant.util import dt as dt_util
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,24 +118,20 @@ class MealMinderStorage:
         meal_id: str,
     ) -> bool:
 
-        active_plan = self.data.get("active_plan")
-
         for plan in self.data.get("plans", []):
 
-            if plan["id"] == active_plan:
+            meals = plan.get("meals", [])
 
-                meals = plan.get("meals", [])
+            original_count = len(meals)
 
-                original_count = len(meals)
+            plan["meals"] = [meal for meal in meals if meal.get("id") != meal_id]
 
-                plan["meals"] = [meal for meal in meals if meal.get("id") != meal_id]
+            removed = len(plan["meals"]) < original_count
 
-                removed = len(plan["meals"]) < original_count
+            if removed:
+                await self.async_save()
 
-                if removed:
-                    await self.async_save()
-
-                return removed
+            return removed
 
         return False
 
@@ -157,24 +150,20 @@ class MealMinderStorage:
             "preparation",
         }
 
-        active_plan = self.data.get("active_plan")
-
         for plan in self.data.get("plans", []):
 
-            if plan["id"] == active_plan:
+            for meal in plan.get("meals", []):
 
-                for meal in plan.get("meals", []):
+                if meal.get("id") == meal_id:
 
-                    if meal.get("id") == meal_id:
+                    for key, value in updates.items():
 
-                        for key, value in updates.items():
+                        if key in allowed_fields:
+                            meal[key] = value
 
-                            if key in allowed_fields:
-                                meal[key] = value
+                    await self.async_save()
 
-                        await self.async_save()
-
-                        return True
+                    return True
 
         return False
 
@@ -390,7 +379,7 @@ class MealMinderStorage:
 
     async def async_export(self):
 
-        data = await self.store.async_load()
+        # data = await self.store.async_load()
 
         export_data = self._build_export_data()
 
@@ -428,7 +417,7 @@ class MealMinderStorage:
             "source_storage_key": self.storage_key,
             "data": self.data,
         }
-    
+
     async def async_import(self, path: str):
 
         import_path = Path(path)
@@ -437,9 +426,7 @@ class MealMinderStorage:
             raise FileNotFoundError(f"Import file not found: {path}")
 
         if import_path.suffix.lower() != ".json":
-            raise HomeAssistantError(
-                "Only JSON export files are supported"
-            )
+            raise HomeAssistantError("Only JSON export files are supported")
         #
         # Lettura file non bloccante
         #

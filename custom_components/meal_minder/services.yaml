@@ -5,7 +5,7 @@ add_meal:
     plan_id:
       name: Plan ID
       description: Meal plan identifier
-      required: false
+      required: true
       selector:
         text:
 

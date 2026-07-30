@@ -36,20 +36,6 @@ async def async_setup_entry(
 
     hass.data[DOMAIN][entry.entry_id] = storage
 
-    def get_storage(call):
-
-        entry_id = call.data.get("entry_id")
-
-        if not entry_id:
-            raise ValueError("entry_id required")
-
-        storage = hass.data[DOMAIN].get(entry_id)
-
-        if not storage:
-            raise ValueError(f"Unknown entry_id {entry_id}")
-
-        return storage
-
     async def get_plans(call: ServiceCall):
 
         # storage = get_storage(call)
@@ -304,9 +290,7 @@ async def async_setup_entry(
         storages = hass.data[DOMAIN]
 
         if not storages:
-            raise HomeAssistantError(
-                "Meal Minder not initialized"
-            )
+            raise HomeAssistantError("Meal Minder not initialized")
 
         # prende la prima configurazione attiva
         entry_id = next(iter(storages))
@@ -320,74 +304,80 @@ async def async_setup_entry(
             result,
         )
 
-    hass.services.async_register(
-        DOMAIN,
-        "create_plan",
-        create_plan,
-        supports_response=SupportsResponse.ONLY,
-    )
+    if not hass.data[DOMAIN].get("services_registered"):
 
-    hass.services.async_register(
-        DOMAIN,
-        "add_meal",
-        add_meal,
-    )
+        # registrazione servizi qui
 
-    hass.services.async_register(
-        DOMAIN,
-        "remove_meal",
-        remove_meal,
-    )
+        hass.data[DOMAIN]["services_registered"] = True
 
-    hass.services.async_register(
-        DOMAIN,
-        "update_meal",
-        update_meal,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "create_plan",
+            create_plan,
+            supports_response=SupportsResponse.ONLY,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_meals",
-        get_meals,
-        supports_response=SupportsResponse.ONLY,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "add_meal",
+            add_meal,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_plans",
-        get_plans,
-        supports_response=SupportsResponse.ONLY,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "remove_meal",
+            remove_meal,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "update_plan",
-        update_plan,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "update_meal",
+            update_meal,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "delete_plan",
-        delete_plan,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "get_meals",
+            get_meals,
+            supports_response=SupportsResponse.ONLY,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "set_active_plan",
-        set_active_plan,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "get_plans",
+            get_plans,
+            supports_response=SupportsResponse.ONLY,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "export_config",
-        export_config,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "update_plan",
+            update_plan,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "import_config",
-        import_config,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "delete_plan",
+            delete_plan,
+        )
+
+        hass.services.async_register(
+            DOMAIN,
+            "set_active_plan",
+            set_active_plan,
+        )
+
+        hass.services.async_register(
+            DOMAIN,
+            "export_config",
+            export_config,
+        )
+
+        hass.services.async_register(
+            DOMAIN,
+            "import_config",
+            import_config,
+        )
 
     await hass.config_entries.async_forward_entry_setups(
         entry,

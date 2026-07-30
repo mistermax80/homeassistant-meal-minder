@@ -1,0 +1,66 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Meal Minder",
+        "description": "Configure your meal planner",
+        "data": {
+          "name": "Integration name"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Meal Minder is already configured"
+    }
+  },
+  "services": {
+    "create_plan": {
+      "name": "Create meal plan",
+      "description": "Create a new meal plan"
+    },
+    "add_meal": {
+      "name": "Add meal",
+      "description": "Add a meal to a meal plan"
+    },
+    "update_meal": {
+      "name": "Update meal",
+      "description": "Update an existing meal"
+    },
+    "remove_meal": {
+      "name": "Remove meal",
+      "description": "Remove a meal from a plan"
+    },
+    "get_meals": {
+      "name": "Get meals",
+      "description": "Retrieve meals from the active plan"
+    },
+    "create_plan": {
+      "name": "Create meal plan",
+      "description": "Create a new meal plan"
+    },
+    "get_plans": {
+      "name": "Get meal plans",
+      "description": "Retrieve available meal plans"
+    },
+    "update_plan": {
+      "name": "Update meal plan",
+      "description": "Update an existing meal plan"
+    },
+    "delete_plan": {
+      "name": "Delete meal plan",
+      "description": "Delete a meal plan"
+    },
+    "set_active_plan": {
+      "name": "Set active meal plan",
+      "description": "Select the active meal plan"
+    },
+    "export_config": {
+      "name": "Export configuration",
+      "description": "Export Meal Minder data"
+    },
+    "import_config": {
+      "name": "Import configuration",
+      "description": "Import Meal Minder data"
+    }
+  }
+}

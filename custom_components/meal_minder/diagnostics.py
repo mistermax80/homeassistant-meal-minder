@@ -17,12 +17,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
-    storage = MealMinderStorage(
-        hass,
-        entry.entry_id,
-    )
-
-    await storage.async_load()
+    storage = hass.data[DOMAIN][entry.entry_id]
 
     data = storage.data or {}
 
