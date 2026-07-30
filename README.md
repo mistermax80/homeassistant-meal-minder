@@ -9,7 +9,7 @@ Smart meal planner for Home Assistant
 </p>
 
 <p align="center">
-  <img src="images/banner_ENG.png" width="912" alt="Meal Minder Banner">
+  <img src="images/banner_ENG.png" alt="Meal Minder Banner">
 </p>
 
 ## Screenshots
