@@ -1,3 +1,5 @@
+"""Config flow for Meal Minder."""
+
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -10,7 +12,6 @@ class MealMinderConfigFlow(
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):
-
     VERSION = 1
 
     async def async_step_user(
@@ -19,7 +20,6 @@ class MealMinderConfigFlow(
     ) -> FlowResult:
 
         if user_input is not None:
-
             await self.async_set_unique_id(DOMAIN)
 
             self._abort_if_unique_id_configured()

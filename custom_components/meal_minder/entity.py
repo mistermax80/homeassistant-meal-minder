@@ -1,9 +1,11 @@
-from .const import DOMAIN
+"""Base entities for Meal Minder."""
+
 from homeassistant.components.sensor import SensorEntity
+
+from .const import DOMAIN
 
 
 class MealMinderSensorEntity(SensorEntity):
-
     def __init__(
         self,
         storage,

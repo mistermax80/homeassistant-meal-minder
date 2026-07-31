@@ -1,13 +1,13 @@
+import logging
+
+from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
-from homeassistant.components import persistent_notification
-
 
 from .const import DOMAIN
 from .storage import MealMinderStorage
-import logging
 
 PLATFORMS = [
     "calendar",
@@ -168,21 +168,17 @@ async def async_setup_entry(
         meal_id = data.pop("id")
 
         if "items" in data:
-
             data["items"] = [
                 item.strip() for item in data["items"].splitlines() if item.strip()
             ]
 
         if "meal_type" in data:
-
             data["type"] = data.pop("meal_type")
 
         if "time" in data:
-
             data["time"] = str(data["time"])[:5]
 
         if "weekday" in data:
-
             data["weekday"] = int(data["weekday"])
 
         if data.get("clear_date"):
@@ -198,7 +194,6 @@ async def async_setup_entry(
         data["preparation"] = preparation
 
         if data.get("clear_preparation"):
-
             data["preparation"] = None
 
             data.pop(
@@ -212,7 +207,6 @@ async def async_setup_entry(
         )
 
         if updated:
-
             hass.bus.async_fire(
                 "meal_minder_updated",
                 {
@@ -221,15 +215,16 @@ async def async_setup_entry(
             )
 
     async def get_meals(call: ServiceCall):
-        """meals = await storage.async_get_meals(
-            date=call.data.get("date"),
-            weekday=call.data.get("weekday"),
-            meal_type=call.data.get("meal_type"),
-        )
 
-        return {
-            "meals": meals,
-        }"""
+        # Meals = await storage.async_get_meals(
+        #     date=call.data.get("date"),
+        #     weekday=call.data.get("weekday"),
+        #     meal_type=call.data.get("meal_type"),
+        # )
+
+        # return {
+        #     "meals": meals,
+        # }
 
         today = dt_util.now().date()
 
@@ -305,7 +300,6 @@ async def async_setup_entry(
         )
 
     if not hass.data[DOMAIN].get("services_registered"):
-
         # registrazione servizi qui
 
         hass.data[DOMAIN]["services_registered"] = True

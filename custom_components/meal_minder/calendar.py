@@ -1,14 +1,15 @@
+"""Calendar platform for Meal Minder."""
+
 from datetime import datetime, time, timedelta
+import logging
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
-from .entity import MealMinderSensorEntity
 
 from .const import DOMAIN
-
-import logging
+from .entity import MealMinderSensorEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +33,6 @@ async def async_setup_entry(
 
 
 class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
-
     _attr_name = "Meal Minder Calendar"
 
     def __init__(
@@ -65,7 +65,6 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         }
 
         for meal in meals:
-
             meal_time = meal.get(
                 "time",
                 "12:00",
@@ -153,13 +152,11 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         final_date = end_date.date()
 
         while current_date <= final_date:
-
             meals = await self.storage.async_get_resolved_meals(
                 current_date,
             )
 
             for meal in meals:
-
                 meal_time = meal.get(
                     "time",
                     "12:00",
@@ -190,7 +187,6 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
                 preparation = meal.get("preparation")
 
                 if preparation:
-
                     description += "\n\nPreparazione:"
 
                     for item in preparation.get(

@@ -1,14 +1,11 @@
 """Diagnostics support for Meal Minder."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .storage import MealMinderStorage
 
 
 async def async_get_config_entry_diagnostics(
@@ -34,7 +31,6 @@ async def async_get_config_entry_diagnostics(
     }
 
     for plan in plans:
-
         meals = plan.get(
             "meals",
             [],
@@ -65,8 +61,7 @@ async def async_get_config_entry_diagnostics(
 def _sanitize_data(
     data: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Remove sensitive information.
+    """Remove sensitive information.
 
     Keep meal data because it is required
     for debugging.

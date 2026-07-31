@@ -1,3 +1,5 @@
+"""Constants for Meal Minder."""
+
 DOMAIN = "meal_minder"
 
 STORAGE_VERSION = 1

@@ -1,6 +1,6 @@
-from __future__ import annotations
+"""Data models used by Meal Minder."""
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 import uuid
 
 
@@ -57,25 +57,20 @@ class Meal:
 
         data = asdict(self)
 
-        data["type"] = data.pop(
-            "meal_type"
-        )
+        data["type"] = data.pop("meal_type")
 
         return data
 
 
 @dataclass
 class MealPlan:
-
     id: str
     name: str
 
     start_date: str
     end_date: str
 
-    meals: list[Meal] = field(
-        default_factory=list
-    )
+    meals: list[Meal] = field(default_factory=list)
 
     @classmethod
     def create(
@@ -103,10 +98,7 @@ class MealPlan:
             name=data["name"],
             start_date=data["start_date"],
             end_date=data["end_date"],
-            meals=[
-                Meal.from_dict(meal)
-                for meal in data.get("meals", [])
-            ],
+            meals=[Meal.from_dict(meal) for meal in data.get("meals", [])],
         )
 
     def to_dict(self) -> dict:
@@ -116,8 +108,5 @@ class MealPlan:
             "name": self.name,
             "start_date": self.start_date,
             "end_date": self.end_date,
-            "meals": [
-                meal.to_dict()
-                for meal in self.meals
-            ],
+            "meals": [meal.to_dict() for meal in self.meals],
         }

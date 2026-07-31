@@ -1,28 +1,29 @@
+"""Storage management for Meal Minder."""
+
+from datetime import datetime
+import json
+import logging
+from pathlib import Path
+
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
-from pathlib import Path
-from datetime import datetime
 
 from .const import (
     DOMAIN,
-    STORAGE_KEY,
-    STORAGE_VERSION,
-    STORAGE_MINOR_VERSION,
-    EXPORT_VERSION,
     EXPORT_FILENAME,
+    EXPORT_VERSION,
+    STORAGE_KEY,
+    STORAGE_MINOR_VERSION,
+    STORAGE_VERSION,
 )
 from .models import Meal, MealPlan
-
-import json
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class MealMinderStorage:
-
     def __init__(
         self,
         hass: HomeAssistant,
@@ -100,9 +101,7 @@ class MealMinderStorage:
         )
 
         for plan in self.data.get("plans", []):
-
             if plan["id"] == plan_id:
-
                 plan.setdefault("meals", [])
 
                 plan["meals"].append(meal.to_dict())
@@ -119,7 +118,6 @@ class MealMinderStorage:
     ) -> bool:
 
         for plan in self.data.get("plans", []):
-
             meals = plan.get("meals", [])
 
             original_count = len(meals)
@@ -151,13 +149,9 @@ class MealMinderStorage:
         }
 
         for plan in self.data.get("plans", []):
-
             for meal in plan.get("meals", []):
-
                 if meal.get("id") == meal_id:
-
                     for key, value in updates.items():
-
                         if key in allowed_fields:
                             meal[key] = value
 
@@ -174,9 +168,7 @@ class MealMinderStorage:
         active_plan = self.data.get("active_plan")
 
         for plan in self.data.get("plans", []):
-
             if plan["id"] == active_plan:
-
                 return plan.get("meals", [])
 
         return []
@@ -185,8 +177,7 @@ class MealMinderStorage:
         self,
         target_date,
     ) -> list[dict]:
-        """
-        Resolve meal rules for a specific date.
+        """Resolve meal rules for a specific date.
 
         Priority:
         1. Exact date meals (exceptions)
@@ -207,7 +198,6 @@ class MealMinderStorage:
         active_plan = None
 
         for plan in self.data.get("plans", []):
-
             if plan["id"] == active_plan_id:
                 active_plan = plan
                 break
@@ -243,10 +233,8 @@ class MealMinderStorage:
             "meals",
             [],
         ):
-
             # Exact date exception
             if meal.get("date"):
-
                 if meal["date"] == target_date.isoformat():
                     resolved.append(meal)
 
@@ -254,7 +242,6 @@ class MealMinderStorage:
 
             # Weekly recurring meal
             if meal.get("weekday") is not None:
-
                 if meal["weekday"] == weekday:
                     resolved.append(meal)
 
@@ -295,7 +282,6 @@ class MealMinderStorage:
             "plans",
             [],
         ):
-
             if plan["id"] == active_plan:
                 return plan
 
@@ -321,11 +307,8 @@ class MealMinderStorage:
         }
 
         for plan in self.data.get("plans", []):
-
             if plan["id"] == plan_id:
-
                 for key, value in updates.items():
-
                     if key in allowed_fields and value is not None:
                         plan[key] = value
 
@@ -352,7 +335,6 @@ class MealMinderStorage:
         deleted = len(self.data["plans"]) < original_count
 
         if deleted:
-
             if self.data.get("active_plan") == plan_id:
                 self.data["active_plan"] = None
 
@@ -366,9 +348,7 @@ class MealMinderStorage:
     ) -> bool:
 
         for plan in self.data.get("plans", []):
-
             if plan["id"] == plan_id:
-
                 self.data["active_plan"] = plan_id
 
                 await self.async_save()
