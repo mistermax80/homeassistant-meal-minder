@@ -6,16 +6,20 @@ from .const import DOMAIN
 
 
 class MealMinderSensorEntity(SensorEntity):
+    """Base sensor entity for Meal Minder."""
+
     def __init__(
         self,
         storage,
         entry,
     ):
+        """Initialize the Meal Minder sensor entity."""
         self.storage = storage
         self.entry = entry
 
     @property
     def device_info(self):
+        """Return device information for the entity."""
         return {
             "identifiers": {
                 (

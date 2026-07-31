@@ -24,11 +24,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class MealMinderStorage:
+    """Manage persistent storage for Meal Minder integration."""
+
     def __init__(
         self,
         hass: HomeAssistant,
         entry_id: str,
     ):
+        """Initialize MealMinder storage for a config entry."""
 
         self.hass = hass
         self.entry_id = entry_id
@@ -44,9 +47,11 @@ class MealMinderStorage:
         self.data = {}
 
     async def async_load(self):
+        """Load Meal Minder storage data from disk."""
         self.data = await self.store.async_load() or {}
 
     async def async_save(self):
+        """Save Meal Minder storage data to disk."""
         await self.store.async_save(self.data)
 
     async def async_create_plan(
@@ -55,6 +60,7 @@ class MealMinderStorage:
         start_date: str,
         end_date: str,
     ) -> dict:
+        """Create a new meal plan and save it to storage."""
 
         plan = MealPlan.create(
             name=name,
@@ -77,11 +83,37 @@ class MealMinderStorage:
         plan_id: str,
         meal_type: str,
         items: list[str],
+        *,
         meal_time: str = "12:00",
         weekday: int | None = None,
         date: str | None = None,
         preparation: dict | None = None,
-    ):
+    ) -> None:
+        """Add a meal to an existing meal plan.
+
+        Parameters
+        ----------
+        plan_id : str
+            Identifier of the plan to add the meal to.
+        meal_type : str
+            Type of meal to add.
+        items : list[str]
+            Items included in the meal.
+        meal_time : str, optional
+            Scheduled time for the meal, by default "12:00".
+        weekday : int | None, optional
+            Weekday index for recurring meals, by default None.
+        date : str | None, optional
+            Specific date for the meal, by default None.
+        preparation : dict | None, optional
+            Preparation details for the meal, by default None.
+
+        Raises:
+        ------
+        ValueError
+            If both weekday and date are provided or the plan is not found.
+
+        """
 
         # Meal can be added in three ways:
         # - weekday valorizzato
@@ -116,6 +148,19 @@ class MealMinderStorage:
         self,
         meal_id: str,
     ) -> bool:
+        """Remove a meal from the meal plans.
+
+        Parameters
+        ----------
+        meal_id : str
+            The unique identifier of the meal to remove.
+
+        Returns:
+        -------
+        bool
+            True if a meal was removed, False otherwise.
+
+        """
 
         for plan in self.data.get("plans", []):
             meals = plan.get("meals", [])
@@ -138,6 +183,22 @@ class MealMinderStorage:
         meal_id: str,
         **updates,
     ) -> bool:
+        """Update a meal with the provided changes.
+
+        Parameters
+        ----------
+        meal_id : str
+            The unique identifier of the meal to update.
+        **updates
+            Fields to update on the meal. Allowed fields are
+            date, weekday, time, type, items, and preparation.
+
+        Returns:
+        -------
+        bool
+            True if the meal was found and updated, False otherwise.
+
+        """
 
         allowed_fields = {
             "date",
@@ -164,6 +225,7 @@ class MealMinderStorage:
     async def async_get_active_meals(
         self,
     ) -> list[dict]:
+        """Return meals from the currently active meal plan."""
 
         active_plan = self.data.get("active_plan")
 
@@ -258,6 +320,23 @@ class MealMinderStorage:
         weekday: int | None = None,
         meal_type: str | None = None,
     ):
+        """Return active meals filtered by date, weekday, and type.
+
+        Parameters
+        ----------
+        date : str | None, optional
+            ISO-formatted date to filter meals by exact date.
+        weekday : int | None, optional
+            Weekday index to filter recurring meals.
+        meal_type : str | None, optional
+            Meal type to filter returned meals.
+
+        Returns:
+        -------
+        list[dict]
+            Filtered list of active meal entries.
+
+        """
 
         meals = await self.async_get_active_meals()
 
@@ -275,6 +354,14 @@ class MealMinderStorage:
     async def async_get_active_plan(
         self,
     ) -> dict | None:
+        """Return the active plan if one is set.
+
+        Returns:
+        -------
+        dict | None
+            The active plan dictionary, or None if not found.
+
+        """
 
         active_plan = self.data.get("active_plan")
 
@@ -288,6 +375,14 @@ class MealMinderStorage:
         return None
 
     async def async_get_plans(self) -> list[dict]:
+        """Return all stored plans.
+
+        Returns:
+        -------
+        list[dict]
+            List of plan dictionaries.
+
+        """
 
         return self.data.get(
             "plans",
@@ -299,6 +394,22 @@ class MealMinderStorage:
         plan_id: str,
         **updates,
     ) -> bool:
+        """Update a stored plan.
+
+        Parameters
+        ----------
+        plan_id : str
+            The ID of the plan to update.
+        **updates
+            Fields to update on the plan. Only "name", "start_date", and
+            "end_date" are allowed.
+
+        Returns:
+        -------
+        bool
+            True if the plan was found and updated, False otherwise.
+
+        """
 
         allowed_fields = {
             "name",
@@ -322,6 +433,19 @@ class MealMinderStorage:
         self,
         plan_id: str,
     ) -> bool:
+        """Delete a plan from storage.
+
+        Parameters
+        ----------
+        plan_id : str
+            The ID of the plan to delete.
+
+        Returns:
+        -------
+        bool
+            True if the plan was deleted, False otherwise.
+
+        """
 
         plans = self.data.get(
             "plans",
@@ -346,6 +470,19 @@ class MealMinderStorage:
         self,
         plan_id: str,
     ) -> bool:
+        """Set the active plan.
+
+        Parameters
+        ----------
+        plan_id : str
+            The ID of the plan to activate.
+
+        Returns:
+        -------
+        bool
+            True if the plan was activated, False otherwise.
+
+        """
 
         for plan in self.data.get("plans", []):
             if plan["id"] == plan_id:
@@ -358,6 +495,14 @@ class MealMinderStorage:
         return False
 
     async def async_export(self):
+        """Export the current configuration to a JSON file.
+
+        Returns:
+        -------
+        str
+            The file path where the export was saved.
+
+        """
 
         # data = await self.store.async_load()
 
@@ -379,7 +524,7 @@ class MealMinderStorage:
 
     def _write_export_file(self, path, data):
 
-        with open(path, "w", encoding="utf-8") as file:
+        with Path(path).open("w", encoding="utf-8") as file:
             json.dump(
                 data,
                 file,
@@ -399,6 +544,23 @@ class MealMinderStorage:
         }
 
     async def async_import(self, path: str):
+        """Import meal minder data from a JSON export file.
+
+        Parameters
+        ----------
+        path : str
+            Path to the JSON export file.
+
+        Raises:
+        ------
+        FileNotFoundError
+            If the import file does not exist.
+        HomeAssistantError
+            If the file is not a JSON export file.
+        ValueError
+            If the file contents are not a valid Meal Minder export.
+
+        """
 
         import_path = Path(path)
 

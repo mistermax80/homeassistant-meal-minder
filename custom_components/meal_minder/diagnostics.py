@@ -75,4 +75,4 @@ def _sanitize_data(
     # password, cloud id ecc.
     #
 
-    return sanitized
+    return sanitized  # noqa: RET504

@@ -1,3 +1,9 @@
+"""Meal Minder integration.
+
+This package implements the core setup and service handling for the
+Meal Minder Home Assistant integration.
+"""
+
 import logging
 
 from homeassistant.components import persistent_notification
@@ -21,6 +27,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> bool:
+    """Set up Meal Minder from a config entry."""
 
     storage = MealMinderStorage(
         hass,
@@ -385,6 +392,7 @@ async def async_unload_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> bool:
+    """Unload a config entry."""
 
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry,

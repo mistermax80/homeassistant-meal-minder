@@ -6,6 +6,8 @@ import uuid
 
 @dataclass
 class Meal:
+    """Represent a meal entry used by Meal Minder."""
+
     id: str
     time: str
     meal_type: str
@@ -22,10 +24,34 @@ class Meal:
         time: str,
         meal_type: str,
         items: list[str],
+        *,
         weekday: int | None = None,
         date: str | None = None,
         preparation=None,
     ) -> Meal:
+        """Create a new meal entry with a generated ID.
+
+        Parameters
+        ----------
+        time : str
+            The scheduled time for the meal.
+        meal_type : str
+            The type of meal (for example, breakfast, lunch, dinner).
+        items : list[str]
+            The items included in the meal.
+        weekday : int | None, optional
+            The weekday index for recurring meals, by default None.
+        date : str | None, optional
+            A specific date override for the meal, by default None.
+        preparation : dict | None, optional
+            Preparation details for the meal, by default None.
+
+        Returns:
+        -------
+        Meal
+            The created Meal instance.
+
+        """
 
         return cls(
             id=uuid.uuid4().hex,
@@ -42,6 +68,7 @@ class Meal:
         cls,
         data: dict,
     ) -> Meal:
+        """Create a Meal instance from a dictionary."""
 
         return cls(
             id=data["id"],
@@ -54,6 +81,7 @@ class Meal:
         )
 
     def to_dict(self) -> dict:
+        """Convert the Meal instance to a dictionary suitable for storage."""
 
         data = asdict(self)
 
@@ -64,6 +92,23 @@ class Meal:
 
 @dataclass
 class MealPlan:
+    """Represent a meal plan containing multiple Meal entries.
+
+    Attributes:
+    ----------
+    id : str
+        Unique identifier for the meal plan.
+    name : str
+        Human-readable name for the meal plan.
+    start_date : str
+        The start date for the meal plan (ISO format).
+    end_date : str
+        The end date for the meal plan (ISO format).
+    meals : list[Meal]
+        The list of meals included in this plan.
+
+    """
+
     id: str
     name: str
 
@@ -79,6 +124,23 @@ class MealPlan:
         start_date: str,
         end_date: str,
     ) -> MealPlan:
+        """Create a new MealPlan with a generated ID.
+
+        Parameters
+        ----------
+        name : str
+            Human-readable name for the meal plan.
+        start_date : str
+            The start date for the meal plan (ISO format).
+        end_date : str
+            The end date for the meal plan (ISO format).
+
+        Returns:
+        -------
+        MealPlan
+            The created MealPlan instance.
+
+        """
 
         return cls(
             id=uuid.uuid4().hex,
@@ -92,6 +154,7 @@ class MealPlan:
         cls,
         data: dict,
     ) -> MealPlan:
+        """Create a MealPlan instance from a dictionary."""
 
         return cls(
             id=data["id"],
@@ -102,6 +165,7 @@ class MealPlan:
         )
 
     def to_dict(self) -> dict:
+        """Convert the MealPlan instance to a dictionary suitable for storage."""
 
         return {
             "id": self.id,

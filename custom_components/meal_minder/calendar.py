@@ -19,6 +19,18 @@ async def async_setup_entry(
     entry,
     async_add_entities: AddEntitiesCallback,
 ):
+    """Set up the Meal Minder calendar entity from a config entry.
+
+    Parameters
+    ----------
+    hass : HomeAssistant
+        The Home Assistant instance.
+    entry : ConfigEntry
+        The config entry for this integration.
+    async_add_entities : AddEntitiesCallback
+        Callback to add entities to Home Assistant.
+
+    """
 
     storage = hass.data[DOMAIN][entry.entry_id]
 
@@ -33,6 +45,8 @@ async def async_setup_entry(
 
 
 class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
+    """Calendar entity for Meal Minder events."""
+
     _attr_name = "Meal Minder Calendar"
 
     def __init__(
@@ -40,6 +54,7 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         storage,
         entry,
     ):
+        """Initialize the Meal Minder calendar entity."""
         self.storage = storage
         self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_calendar"
@@ -119,6 +134,10 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):
+        """Handle entity addition to Home Assistant.
+
+        Load calendar events and register an event listener for meal updates.
+        """
         await super().async_added_to_hass()
 
         await self._load_events()
@@ -131,6 +150,11 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         )
 
     async def async_update(self):
+        """Refresh the calendar events from storage.
+
+        This method is called by Home Assistant to request an update of the
+        entity's state. It reloads events from the integration storage.
+        """
         await self._load_events()
 
     async def _get_events_for_range(
@@ -220,6 +244,7 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         start_date,
         end_date,
     ):
+        """Return calendar events for the requested date range."""
 
         return await self._get_events_for_range(
             start_date,
@@ -228,6 +253,12 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
 
     @property
     def event(self):
+        """Return the current or next calendar event.
+
+        Returns the event that is currently in progress, if any. If there is
+        no current event, returns the next upcoming event. If there are no
+        events, returns None.
+        """
 
         if not self._events:
             return None

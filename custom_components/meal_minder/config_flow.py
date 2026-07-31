@@ -12,12 +12,15 @@ class MealMinderConfigFlow(
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):
+    """Handle a Meal Minder config flow."""
+
     VERSION = 1
 
     async def async_step_user(
         self,
         user_input=None,
     ) -> FlowResult:
+        """Handle the user step of the config flow."""
 
         if user_input is not None:
             await self.async_set_unique_id(DOMAIN)

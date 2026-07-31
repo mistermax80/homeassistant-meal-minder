@@ -19,6 +19,11 @@ async def async_setup_entry(
     entry,
     async_add_entities: AddEntitiesCallback,
 ):
+    """Set up sensors for a config entry.
+
+    This registers sensor entities for next meal, today's meals,
+    next preparation reminder, and next meal reminder.
+    """
 
     storage = hass.data[DOMAIN][entry.entry_id]
 
@@ -45,6 +50,16 @@ async def async_setup_entry(
 
 
 async def find_next_meal(storage):
+    """Return the next upcoming meal within the next 7 days.
+
+    Args:
+        storage: The storage object used to resolve meal entries.
+
+    Returns:
+        The next meal candidate dict containing 'datetime' and 'meal',
+        or None if no upcoming meals are found.
+
+    """
 
     now = dt_util.now()
 
@@ -101,6 +116,16 @@ async def find_next_meal(storage):
 
 
 async def find_next_preparation(storage):
+    """Return the next meal preparation reminder within the next 7 days.
+
+    Args:
+        storage: The storage object used to resolve meal entries.
+
+    Returns:
+        The next preparation candidate dict containing 'datetime' and 'meal',
+        or None if no upcoming preparations are found.
+
+    """
 
     now = dt_util.now()
 
@@ -162,11 +187,14 @@ async def find_next_preparation(storage):
 
 
 class MealMinderNextMealSensor(MealMinderSensorEntity, SensorEntity):
+    """Sensor entity for the next scheduled meal."""
+
     _attr_name = "Next Meal"
     _attr_icon = "mdi:silverware"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, storage, entry):
+        """Initialize the next meal sensor entity."""
 
         super().__init__(
             storage,
@@ -179,6 +207,7 @@ class MealMinderNextMealSensor(MealMinderSensorEntity, SensorEntity):
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
+        """Fetch the next scheduled meal and update sensor state."""
 
         next_meal = await find_next_meal(self.storage)
 
@@ -200,6 +229,10 @@ class MealMinderNextMealSensor(MealMinderSensorEntity, SensorEntity):
             self._attr_extra_state_attributes = {}
 
     async def async_added_to_hass(self):
+        """Handle entity addition to Home Assistant.
+
+        Perform initial state update and register update listener.
+        """
 
         await super().async_added_to_hass()
 
@@ -223,9 +256,16 @@ class MealMinderNextMealSensor(MealMinderSensorEntity, SensorEntity):
 
 
 class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
+    """Sensor entity for the number and details of today's meals.
+
+    This sensor returns the count and extra attributes for meals resolved
+    for the current day.
+    """
+
     _attr_icon = "mdi:calendar-today"
 
     def __init__(self, storage, entry):
+        """Initialize the today meals sensor entity."""
 
         super().__init__(
             storage,
@@ -241,6 +281,7 @@ class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
+        """Fetch and update state for today's meals."""
 
         today = dt_util.now().date()
 
@@ -261,6 +302,7 @@ class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
         }
 
     async def async_added_to_hass(self):
+        """Set up the entity when added to Home Assistant."""
 
         await super().async_added_to_hass()
 
@@ -284,11 +326,14 @@ class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
 
 
 class MealMinderNextPreparationReminderSensor(MealMinderSensorEntity, SensorEntity):
+    """Sensor for the next meal preparation reminder."""
+
     _attr_name = "Next Preparation Reminder"
     _attr_icon = "mdi:calendar-clock"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, storage, entry):
+        """Initialize the preparation reminder sensor."""
 
         super().__init__(
             storage,
@@ -301,7 +346,7 @@ class MealMinderNextPreparationReminderSensor(MealMinderSensorEntity, SensorEnti
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
-
+        """Update the sensor state with the next meal preparation reminder."""
         next_preparation = await find_next_preparation(self.storage)
 
         if next_preparation:
@@ -327,6 +372,7 @@ class MealMinderNextPreparationReminderSensor(MealMinderSensorEntity, SensorEnti
             self._attr_extra_state_attributes = {}
 
     async def async_added_to_hass(self):
+        """Handle entity registration with Home Assistant."""
 
         await super().async_added_to_hass()
 
@@ -351,11 +397,14 @@ class MealMinderNextPreparationReminderSensor(MealMinderSensorEntity, SensorEnti
 
 
 class MealMinderNextMealReminderSensor(MealMinderSensorEntity, SensorEntity):
+    """Sensor entity for the next meal reminder timestamp."""
+
     _attr_name = "Next Meal Reminder"
     _attr_icon = "mdi:calendar-alert"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, storage, entry):
+        """Initialize the next meal reminder sensor."""
 
         super().__init__(
             storage,
@@ -368,6 +417,7 @@ class MealMinderNextMealReminderSensor(MealMinderSensorEntity, SensorEntity):
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
+        """Update the next meal reminder sensor state."""
 
         next_meal = await find_next_meal(self.storage)
 
@@ -393,7 +443,7 @@ class MealMinderNextMealReminderSensor(MealMinderSensorEntity, SensorEntity):
             self._attr_extra_state_attributes = {}
 
     async def async_added_to_hass(self):
-
+        """Register event listener when entity is added to Home Assistant."""
         await super().async_added_to_hass()
 
         await self.async_update()
