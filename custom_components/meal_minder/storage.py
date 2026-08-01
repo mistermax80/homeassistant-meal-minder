@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from homeassistant.core import HomeAssistant
@@ -19,9 +19,37 @@ from .const import (
     STORAGE_MINOR_VERSION,
     STORAGE_VERSION,
 )
+from .exceptions import InvalidDateError, InvalidDateRangeError, PlanNotFoundError
 from .models import Meal, MealPlan
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _normalize_plan_date(value: str | date | datetime | None) -> str | None:
+    """Normalize a plan date to an ISO string."""
+
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+
+    if isinstance(value, date):
+        return value.isoformat()
+
+    return str(value)
+
+
+def _parse_plan_date(value: str | date | datetime) -> date:
+    """Parse a stored plan date into a date object."""
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    return datetime.fromisoformat(str(value)).date()
 
 
 class MealMinderStorage:
@@ -63,6 +91,15 @@ class MealMinderStorage:
     ) -> dict:
         """Create a new meal plan and save it to storage."""
 
+        start_date = _normalize_plan_date(start_date)
+        end_date = _normalize_plan_date(end_date)
+
+        if start_date is None or end_date is None:
+            raise InvalidDateError
+
+        if _parse_plan_date(end_date) <= _parse_plan_date(start_date):
+            raise InvalidDateRangeError
+
         plan = MealPlan.create(
             name=name,
             start_date=start_date,
@@ -72,11 +109,6 @@ class MealMinderStorage:
         self.data.setdefault("plans", [])
 
         self.data["plans"].append(plan.to_dict())
-
-        active_plan = await self.async_get_active_plan()
-
-        if not active_plan:
-            self.data["active_plan"] = plan.id
 
         await self.async_save()
 
@@ -278,9 +310,9 @@ class MealMinderStorage:
         )
 
         # Check plan validity
-        start_date = datetime.fromisoformat(active_plan["start_date"]).date()
+        start_date = _parse_plan_date(active_plan["start_date"])
 
-        end_date = datetime.fromisoformat(active_plan["end_date"]).date()
+        end_date = _parse_plan_date(active_plan["end_date"])
 
         if not (start_date <= target_date <= end_date):
             return []
@@ -425,7 +457,16 @@ class MealMinderStorage:
             if plan["id"] == plan_id:
                 for key, value in updates.items():
                     if key in allowed_fields and value is not None:
-                        plan[key] = value
+                        if key in {"start_date", "end_date"}:
+                            plan[key] = _normalize_plan_date(value)
+                        else:
+                            plan[key] = value
+
+                if plan.get("start_date") and plan.get("end_date"):
+                    if _parse_plan_date(plan["end_date"]) < _parse_plan_date(
+                        plan["start_date"]
+                    ):
+                        raise InvalidDateRangeError
 
                 await self.async_save()
 
@@ -513,7 +554,7 @@ class MealMinderStorage:
                 break
 
         if source is None:
-            raise ValueError(f"Meal plan {plan_id} not found")
+            raise PlanNotFoundError
 
         duplicated = {
             "id": uuid.uuid4().hex,

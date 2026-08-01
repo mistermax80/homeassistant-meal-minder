@@ -1,15 +1,19 @@
 """Config flow for Meal Minder."""
 
+import logging
 import uuid
-from datetime import date
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .exceptions import InvalidDateError, InvalidDateRangeError, PlanNotFoundError
 from .storage import MealMinderStorage
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class MealMinderConfigFlow(
@@ -63,14 +67,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
 
         self._config_entry = config_entry
         self.selected_plan = None
-
-    async def _get_storage(self) -> MealMinderStorage:
-        storage = self.hass.data[DOMAIN].get(self.config_entry.entry_id)
-
-        if storage is None:
-            raise RuntimeError("Meal Minder storage not initialized")
-
-        return storage
+        self.duplicate_name = None
 
     async def async_step_init(
         self,
@@ -118,96 +115,6 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             ),
         )
 
-    async def async_step_create_plan(
-        self,
-        user_input=None,
-    ) -> FlowResult:
-        """Create a new meal plan."""
-
-        if user_input:
-            storage: MealMinderStorage = await self._get_storage()
-
-            await storage.async_create_plan(
-                name=user_input["name"],
-                start_date=user_input["start_date"],
-                end_date=user_input["end_date"],
-            )
-
-            return self.async_create_entry(
-                title="",
-                data={},
-            )
-
-        today = date.today()
-
-        return self.async_show_form(
-            step_id="create_plan",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        "name",
-                    ): str,
-                    vol.Required(
-                        "start_date",
-                        default=today,
-                    ): selector.DateSelector(selector.DateSelectorConfig()),
-                    vol.Required(
-                        "end_date",
-                        default=today,
-                    ): selector.DateSelector(selector.DateSelectorConfig()),
-                }
-            ),
-        )
-
-    async def async_step_manage_plans(
-        self,
-        user_input=None,
-    ) -> FlowResult:
-        """Show available meal plans."""
-
-        storage: MealMinderStorage = await self._get_storage()
-
-        plans = await storage.async_get_plans()
-
-        active = await storage.async_get_active_plan()
-
-        options = []
-
-        for plan in plans:
-            label = f"{plan['name']} ({plan['start_date']} - {plan['end_date']})"
-
-            if active and active["id"] == plan["id"]:
-                label = f"✅ {label}"
-
-            options.append(
-                selector.SelectOptionDict(
-                    value=plan["id"],
-                    label=label,
-                )
-            )
-
-        if user_input:
-            self.selected_plan = next(
-                plan for plan in plans if plan["id"] == user_input["plan_id"]
-            )
-
-            return await self.async_step_plan_actions()
-
-        return self.async_show_form(
-            step_id="manage_plans",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        "plan_id",
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=options,
-                        )
-                    )
-                }
-            ),
-        )
-
     async def async_step_plan_actions(
         self,
         user_input=None,
@@ -220,8 +127,6 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         if user_input:
             action = user_input["action"]
 
-            storage: MealMinderStorage = await self._get_storage()
-
             if action == "activate":
                 await storage.async_set_active_plan(
                     self.selected_plan["id"],
@@ -233,7 +138,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                 )
 
             if action == "delete":
-                if self.selected_plan["id"] == active["id"]:
+                if active is not None and self.selected_plan["id"] == active["id"]:
                     return self.async_abort(reason="do_not_delete_active_plan")
 
                 await storage.async_delete_plan(
@@ -291,43 +196,125 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             ),
         )
 
+    async def async_step_create_plan(
+        self,
+        user_input=None,
+    ) -> FlowResult:
+        """Create a new meal plan."""
+
+        errors = {}
+
+        if user_input:
+            storage = await self._get_storage()
+
+            try:
+                await storage.async_create_plan(
+                    name=user_input["name"],
+                    start_date=user_input["start_date"],
+                    end_date=user_input["end_date"],
+                )
+
+                return self.async_create_entry(title="", data={})
+
+            except InvalidDateRangeError:
+                errors["base"] = "invalid_date_range"
+            except InvalidDateError:
+                errors["base"] = "invalid_date"
+            except Exception:
+                errors["base"] = "unknown_error"
+                _LOGGER.exception("Failed to configure flow")
+
+        return self.async_show_form(
+            step_id="create_plan",
+            data_schema=self._plan_schema(user_input),
+            errors=errors,
+        )
+
     async def async_step_edit_plan(
         self,
         user_input=None,
     ) -> FlowResult:
         """Edit selected meal plan."""
 
+        errors = {}
+
         if user_input:
-            storage: MealMinderStorage = await self._get_storage()
+            storage = await self._get_storage()
 
-            await storage.async_update_plan(
-                plan_id=self.selected_plan["id"],
-                name=user_input["name"],
-                start_date=user_input["start_date"],
-                end_date=user_input["end_date"],
-            )
+            try:
+                await storage.async_update_plan(
+                    plan_id=self.selected_plan["id"],
+                    name=user_input["name"],
+                    start_date=user_input["start_date"],
+                    end_date=user_input["end_date"],
+                )
 
-            return self.async_create_entry(
-                title="",
-                data={},
-            )
+                return self.async_create_entry(
+                    title="",
+                    data={},
+                )
+
+            except InvalidDateRangeError:
+                errors["base"] = "invalid_date_range"
+            except InvalidDateError:
+                errors["base"] = "invalid_date"
+            except Exception:
+                errors["base"] = "unknown_error"
+                _LOGGER.exception("Failed to configure flow")
 
         return self.async_show_form(
             step_id="edit_plan",
+            data_schema=self._plan_schema(
+                user_input or self.selected_plan,
+            ),
+            errors=errors,
+        )
+
+    async def async_step_manage_plans(
+        self,
+        user_input=None,
+    ) -> FlowResult:
+        """Show available meal plans."""
+
+        storage: MealMinderStorage = await self._get_storage()
+
+        plans = await storage.async_get_plans()
+
+        active = await storage.async_get_active_plan()
+
+        options = []
+
+        for plan in plans:
+            label = f"{plan['name']} ({plan['start_date']} - {plan['end_date']})"
+
+            if active and active["id"] == plan["id"]:
+                label = f"✅ {label}"
+
+            options.append(
+                selector.SelectOptionDict(
+                    value=plan["id"],
+                    label=label,
+                )
+            )
+
+        if user_input:
+            self.selected_plan = next(
+                plan for plan in plans if plan["id"] == user_input["plan_id"]
+            )
+
+            return await self.async_step_plan_actions()
+
+        return self.async_show_form(
+            step_id="manage_plans",
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        "name",
-                        default=self.selected_plan["name"],
-                    ): str,
-                    vol.Required(
-                        "start_date",
-                        default=self.selected_plan["start_date"],
-                    ): selector.DateSelector(selector.DateSelectorConfig()),
-                    vol.Required(
-                        "end_date",
-                        default=self.selected_plan["end_date"],
-                    ): selector.DateSelector(selector.DateSelectorConfig()),
+                        "plan_id",
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options,
+                        )
+                    )
                 }
             ),
         )
@@ -338,17 +325,31 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Duplicate selected meal plan."""
 
+        errors = {}
+
         if user_input:
-            storage: MealMinderStorage = await self._get_storage()
+            try:
+                storage: MealMinderStorage = await self._get_storage()
 
-            await storage.async_duplicate_plan(
-                plan_id=self.selected_plan["id"],
-                name=user_input["name"],
-            )
+                await storage.async_duplicate_plan(
+                    plan_id=self.selected_plan["id"],
+                    name=user_input["name"],
+                )
 
-            return self.async_create_entry(
-                title="",
-                data={},
+                return self.async_create_entry(
+                    title="",
+                    data={},
+                )
+
+            except PlanNotFoundError:
+                errors["base"] = "plan_not_found"
+            except Exception:
+                errors["base"] = "unknown_error"
+                _LOGGER.exception("Failed to duplicate plan")
+
+        if self.duplicate_name is None:
+            self.duplicate_name = (
+                f"{self.selected_plan['name']} - Copia {uuid.uuid4().hex[:4]}"
             )
 
         return self.async_show_form(
@@ -357,8 +358,52 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Required(
                         "name",
-                        default=f"{self.selected_plan['name']} - Copia {uuid.uuid4().hex[:4]}",
+                        default=self.duplicate_name,
                     ): str,
                 }
             ),
+            errors=errors,
+        )
+
+    async def _get_storage(self) -> MealMinderStorage:
+        storage = self.hass.data[DOMAIN].get(self._config_entry.entry_id)
+
+        if storage is None:
+            raise RuntimeError("Meal Minder storage not initialized")
+
+        return storage
+
+    def _plan_schema(
+        self,
+        defaults: dict | None = None,
+    ) -> vol.Schema:
+        """Return the meal plan form schema."""
+
+        defaults = defaults or {}
+
+        return vol.Schema(
+            {
+                vol.Required(
+                    "name",
+                    default=defaults.get("name", ""),
+                ): str,
+                vol.Required(
+                    "start_date",
+                    default=defaults.get(
+                        "start_date",
+                        dt_util.now().date().isoformat(),
+                    ),
+                ): selector.DateSelector(
+                    selector.DateSelectorConfig(),
+                ),
+                vol.Required(
+                    "end_date",
+                    default=defaults.get(
+                        "end_date",
+                        dt_util.now().date(),
+                    ),
+                ): selector.DateSelector(
+                    selector.DateSelectorConfig(),
+                ),
+            }
         )

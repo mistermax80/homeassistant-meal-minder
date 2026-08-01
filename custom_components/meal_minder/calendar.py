@@ -1,7 +1,7 @@
 """Calendar platform for Meal Minder."""
 
-from datetime import datetime, time, timedelta
 import logging
+from datetime import datetime, time, timedelta
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.core import HomeAssistant
