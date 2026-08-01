@@ -2,6 +2,7 @@
 
 import json
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -72,7 +73,10 @@ class MealMinderStorage:
 
         self.data["plans"].append(plan.to_dict())
 
-        self.data["active_plan"] = plan.id
+        active_plan = await self.async_get_active_plan()
+
+        if not active_plan:
+            self.data["active_plan"] = plan.id
 
         await self.async_save()
 
@@ -493,6 +497,45 @@ class MealMinderStorage:
                 return True
 
         return False
+
+    async def async_duplicate_plan(
+        self,
+        plan_id: str,
+        name: str,
+    ):
+        """Duplicate an existing meal plan."""
+
+        source = None
+
+        for plan in self.data.get("plans", []):
+            if plan["id"] == plan_id:
+                source = plan
+                break
+
+        if source is None:
+            raise ValueError(f"Meal plan {plan_id} not found")
+
+        duplicated = {
+            "id": uuid.uuid4().hex,
+            "name": name,
+            "start_date": source["start_date"],
+            "end_date": source["end_date"],
+            "meals": [],
+        }
+
+        for meal in source.get("meals", []):
+            new_meal = meal.copy()
+            new_meal["id"] = uuid.uuid4().hex
+            duplicated["meals"].append(new_meal)
+
+        self.data.setdefault(
+            "plans",
+            [],
+        ).append(duplicated)
+
+        await self.async_save()
+
+        return duplicated
 
     async def async_export(self):
         """Export the current configuration to a JSON file.
