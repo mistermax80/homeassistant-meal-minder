@@ -11,6 +11,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .exceptions import InvalidDateError, InvalidDateRangeError, PlanNotFoundError
+from .helpers import format_meal_label, meal_sort_key
 from .storage import MealMinderStorage
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class MealMinderConfigFlow(
     ) -> FlowResult:
         """Handle the user step of the config flow."""
 
-        if user_input is not None:
+        if user_input:
             await self.async_set_unique_id(DOMAIN)
 
             self._abort_if_unique_id_configured()
@@ -68,6 +69,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         self._config_entry = config_entry
         self.selected_plan = None
         self.duplicate_name = None
+        self.selected_meal = None
 
     async def async_step_init(
         self,
@@ -99,16 +101,11 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                         default="create_plan",
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
+                            translation_key="menu_action",
                             options=[
-                                selector.SelectOptionDict(
-                                    value="create_plan",
-                                    label="➕ Nuovo piano",
-                                ),
-                                selector.SelectOptionDict(
-                                    value="manage_plans",
-                                    label="📋 Gestisci piani",
-                                ),
-                            ]
+                                "create_plan",
+                                "manage_plans",
+                            ],
                         )
                     )
                 }
@@ -150,9 +147,8 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                     data={},
                 )
 
-            # Placeholder futuri
             if action == "meals":
-                return self.async_abort(reason="not_implemented")
+                return await self.async_step_manage_meals()
 
             if action == "edit":
                 return await self.async_step_edit_plan()
@@ -299,8 +295,14 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
 
         if user_input:
             self.selected_plan = next(
-                plan for plan in plans if plan["id"] == user_input["plan_id"]
+                (plan for plan in plans if plan["id"] == user_input["plan_id"]),
+                None,
             )
+
+            if self.selected_plan is None:
+                return self.async_abort(
+                    reason="plan_not_found",
+                )
 
             return await self.async_step_plan_actions()
 
@@ -365,6 +367,79 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             errors=errors,
         )
 
+    async def async_step_manage_meals(
+        self,
+        user_input=None,
+    ) -> FlowResult:
+        """Manage meals of the selected plan."""
+
+        storage = await self._get_storage()
+
+        plans = await storage.async_get_plans()
+
+        plan = next(plan for plan in plans if plan["id"] == self.selected_plan["id"])
+
+        meals = plan.get("meals", [])
+
+        options = []
+        for meal in sorted(
+            meals,
+            key=meal_sort_key,
+        ):
+            label = format_meal_label(meal)
+
+            options.append(
+                selector.SelectOptionDict(
+                    value=meal["id"],
+                    label=label,
+                )
+            )
+
+        if user_input:
+            if user_input["meal_id"] == "new":
+                return await self.async_step_create_meal()
+
+            self.selected_meal = next(
+                meal for meal in meals if meal["id"] == user_input["meal_id"]
+            )
+
+            return await self.async_step_meal_actions()
+
+        return self.async_show_form(
+            step_id="manage_meals",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "meal_id",
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_create_meal(
+        self,
+        user_input=None,
+    ) -> FlowResult:
+        """Create a meal."""
+
+        return self.async_abort(
+            reason="not_implemented",
+        )
+
+    async def async_step_meal_actions(
+        self,
+        user_input=None,
+    ) -> FlowResult:
+        """Manage selected meal."""
+
+        return self.async_abort(
+            reason="not_implemented",
+        )
+
     async def _get_storage(self) -> MealMinderStorage:
         storage = self.hass.data[DOMAIN].get(self._config_entry.entry_id)
 
@@ -400,7 +475,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                     "end_date",
                     default=defaults.get(
                         "end_date",
-                        dt_util.now().date(),
+                        dt_util.now().date().isoformat(),
                     ),
                 ): selector.DateSelector(
                     selector.DateSelectorConfig(),

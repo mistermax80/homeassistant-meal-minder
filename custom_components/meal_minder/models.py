@@ -1,7 +1,7 @@
 """Data models used by Meal Minder."""
 
-from dataclasses import asdict, dataclass, field
 import uuid
+from dataclasses import asdict, dataclass, field
 
 
 @dataclass
@@ -28,7 +28,7 @@ class Meal:
         weekday: int | None = None,
         date: str | None = None,
         preparation=None,
-    ) -> Meal:
+    ) -> "Meal":
         """Create a new meal entry with a generated ID.
 
         Parameters
@@ -67,7 +67,7 @@ class Meal:
     def from_dict(
         cls,
         data: dict,
-    ) -> Meal:
+    ) -> "Meal":
         """Create a Meal instance from a dictionary."""
 
         return cls(
@@ -123,7 +123,7 @@ class MealPlan:
         name: str,
         start_date: str,
         end_date: str,
-    ) -> MealPlan:
+    ) -> "MealPlan":
         """Create a new MealPlan with a generated ID.
 
         Parameters
@@ -153,7 +153,7 @@ class MealPlan:
     def from_dict(
         cls,
         data: dict,
-    ) -> MealPlan:
+    ) -> "MealPlan":
         """Create a MealPlan instance from a dictionary."""
 
         return cls(

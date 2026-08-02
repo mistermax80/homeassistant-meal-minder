@@ -13,6 +13,24 @@
       "already_configured": "Meal Minder è già configurato"
     }
   },
+  "options": {
+    "step": {
+      "menu": {
+        "title": "Gestione Meal Minder",
+        "data": {
+          "action": "Azione"
+        }
+      }
+    }
+  },
+  "selector": {
+    "menu_action": {
+      "options": {
+        "create_plan": "➕ Nuovo piano",
+        "manage_plans": "📋 Gestisci piani"
+      }
+    }
+  },
   "services": {
     "create_plan": {
       "name": "Crea piano pasti",
@@ -33,10 +51,6 @@
     "get_meals": {
       "name": "Recupera pasti",
       "description": "Recupera i pasti del piano attivo"
-    },
-    "create_plan": {
-      "name": "Crea piano pasti",
-      "description": "Crea un nuovo piano pasti"
     },
     "get_plans": {
       "name": "Recupera piani pasti",
