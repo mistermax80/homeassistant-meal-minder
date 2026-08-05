@@ -339,14 +339,15 @@ class MealMinderStorage:
                 continue
 
             # Weekly recurring meal
-            if meal.get("weekday") is not None:
+            if meal.get("weekday") is not None and meal.get("weekday") != -1:
                 if meal["weekday"] == weekday:
                     resolved.append(meal)
 
                 continue
 
             # Every day meal
-            resolved.append(meal)
+            if meal.get("weekday") == -1:
+                resolved.append(meal)
 
         return resolved
 
@@ -543,7 +544,7 @@ class MealMinderStorage:
         self,
         plan_id: str,
         name: str,
-    ):
+    ) -> dict:
         """Duplicate an existing meal plan."""
 
         source = None
@@ -606,6 +607,60 @@ class MealMinderStorage:
 
         return path
 
+    async def async_get_export_data(self):
+        """Return export data."""
+        return self._build_export_data()
+
+    async def async_import_data(
+        self,
+        import_data: dict,
+    ):
+        """Import Meal Minder data from JSON."""
+
+        if import_data.get("integration") != DOMAIN:
+            raise ValueError("Invalid Meal Minder export")
+
+        export_version = import_data.get(
+            "export_version",
+            1,
+        )
+
+        if export_version > EXPORT_VERSION:
+            raise ValueError("Unsupported export version")
+
+        imported_data = import_data.get("data")
+
+        if not imported_data:
+            raise ValueError("Missing data section")
+
+        if "plans" not in imported_data:
+            raise ValueError("Invalid meal data")
+
+        #
+        # backup interno prima della sostituzione
+        #
+        current_backup = self._build_export_data()
+
+        _LOGGER.info("Importing Meal Minder backup")
+
+        self.data = imported_data
+
+        await self.async_save()
+
+        self.hass.bus.async_fire(
+            "meal_minder_updated",
+            {"entry_id": self.entry_id},
+        )
+
+        return {
+            "plans": len(
+                self.data.get(
+                    "plans",
+                    [],
+                )
+            )
+        }
+
     def _write_export_file(self, path, data):
 
         with Path(path).open("w", encoding="utf-8") as file:
@@ -617,6 +672,7 @@ class MealMinderStorage:
             )
 
     def _build_export_data(self):
+
         return {
             "integration": DOMAIN,
             "version": STORAGE_VERSION,

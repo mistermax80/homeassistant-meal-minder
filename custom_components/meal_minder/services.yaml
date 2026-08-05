@@ -21,10 +21,24 @@ add_meal:
       description: Recurring weekday (0=Monday, 6=Sunday)
       required: false
       selector:
-        number:
-          min: 0
-          max: 6
-          mode: slider
+        select:
+          options:
+            - label: Every day
+              value: "-1"
+            - label: Monday
+              value: "0"
+            - label: Tuesday
+              value: "1"
+            - label: Wednesday
+              value: "2"
+            - label: Thursday
+              value: "3"
+            - label: Friday
+              value: "4"
+            - label: Saturday
+              value: "5"
+            - label: Sunday
+              value: "6"
 
     time:
       name: Time
@@ -41,6 +55,7 @@ add_meal:
         select:
           options:
             - breakfast
+            - snack
             - lunch
             - dinner
 
@@ -112,10 +127,24 @@ update_meal:
       description: Recurring weekday (0=Monday, 6=Sunday)
       required: false
       selector:
-        number:
-          min: 0
-          max: 6
-          mode: slider
+        select:
+          options:
+            - label: Every day
+              value: "-1"
+            - label: Monday
+              value: "0"
+            - label: Tuesday
+              value: "1"
+            - label: Wednesday
+              value: "2"
+            - label: Thursday
+              value: "3"
+            - label: Friday
+              value: "4"
+            - label: Saturday
+              value: "5"
+            - label: Sunday
+              value: "6"
 
     clear_weekday:
       name: Clear weekday
@@ -299,10 +328,10 @@ set_active_plan:
       selector:
         text:
 
-export_config:
+export_backup:
   name: Export configuration
 
-import_config:
+import_backup:
   name: Import configuration
   description: Import a Meal Minder configuration export file
   fields:

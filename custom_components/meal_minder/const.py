@@ -39,6 +39,7 @@ MEAL_TYPE_ORDER = {
 }
 
 WEEKDAY_LABELS = {
+    -1: "Every day",
     0: "Monday",
     1: "Tuesday",
     2: "Wednesday",

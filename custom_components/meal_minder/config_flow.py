@@ -1,5 +1,6 @@
 """Config flow for Meal Minder."""
 
+import json
 import logging
 import uuid
 
@@ -7,6 +8,10 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+)
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
@@ -31,21 +36,22 @@ class MealMinderConfigFlow(
     ) -> FlowResult:
         """Handle the user step of the config flow."""
 
-        if user_input:
+        if user_input is not None:
             await self.async_set_unique_id(DOMAIN)
-
             self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
                 title=user_input["name"],
-                data={},
+                data={
+                    "name": user_input["name"],
+                },
             )
 
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
+                    vol.Required(
                         "name",
                         default="Meal Minder",
                     ): str,
@@ -92,24 +98,16 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             if user_input["action"] == "manage_plans":
                 return await self.async_step_manage_plans()
 
-        return self.async_show_form(
+            if user_input["action"] == "data_management":
+                return await self.async_step_data_management()
+
+        return self.async_show_menu(
             step_id="menu",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        "action",
-                        default="create_plan",
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            translation_key="menu_action",
-                            options=[
-                                "create_plan",
-                                "manage_plans",
-                            ],
-                        )
-                    )
-                }
-            ),
+            menu_options=[
+                "create_plan",
+                "manage_plans",
+                "data_management",
+            ],
         )
 
     async def async_step_plan_actions(
@@ -129,9 +127,9 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                     self.selected_plan["id"],
                 )
 
-                return self.async_create_entry(
-                    title="",
-                    data={},
+                return self.async_show_form(
+                    step_id="activate_plan_success",
+                    data_schema=vol.Schema({}),
                 )
 
             if action == "delete":
@@ -142,9 +140,9 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                     self.selected_plan["id"],
                 )
 
-                return self.async_create_entry(
-                    title="",
-                    data={},
+                return self.async_show_form(
+                    step_id="delete_plan_success",
+                    data_schema=vol.Schema({}),
                 )
 
             if action == "meals":
@@ -164,28 +162,14 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                         "action",
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
+                            translation_key="plan_actions",
                             options=[
-                                selector.SelectOptionDict(
-                                    value="activate",
-                                    label="✅ Attiva",
-                                ),
-                                selector.SelectOptionDict(
-                                    value="meals",
-                                    label="🍽 Gestisci pasti",
-                                ),
-                                selector.SelectOptionDict(
-                                    value="edit",
-                                    label="📝 Modifica",
-                                ),
-                                selector.SelectOptionDict(
-                                    value="duplicate",
-                                    label="📄 Duplica",
-                                ),
-                                selector.SelectOptionDict(
-                                    value="delete",
-                                    label="🗑 Elimina",
-                                ),
-                            ]
+                                "activate",
+                                "meals",
+                                "edit",
+                                "duplicate",
+                                "delete",
+                            ],
                         )
                     )
                 }
@@ -204,13 +188,16 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             storage = await self._get_storage()
 
             try:
-                await storage.async_create_plan(
+                self.selected_plan = await storage.async_create_plan(
                     name=user_input["name"],
                     start_date=user_input["start_date"],
                     end_date=user_input["end_date"],
                 )
 
-                return self.async_create_entry(title="", data={})
+                return self.async_show_form(
+                    step_id="create_plan_success",
+                    data_schema=vol.Schema({}),
+                )
 
             except InvalidDateRangeError:
                 errors["base"] = "invalid_date_range"
@@ -245,9 +232,9 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                     end_date=user_input["end_date"],
                 )
 
-                return self.async_create_entry(
-                    title="",
-                    data={},
+                return self.async_show_form(
+                    step_id="edit_plan_success",
+                    data_schema=vol.Schema({}),
                 )
 
             except InvalidDateRangeError:
@@ -333,14 +320,14 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             try:
                 storage: MealMinderStorage = await self._get_storage()
 
-                await storage.async_duplicate_plan(
+                self.selected_plan = await storage.async_duplicate_plan(
                     plan_id=self.selected_plan["id"],
                     name=user_input["name"],
                 )
 
-                return self.async_create_entry(
-                    title="",
-                    data={},
+                return self.async_show_form(
+                    step_id="duplicate_plan_success",
+                    data_schema=vol.Schema({}),
                 )
 
             except PlanNotFoundError:
@@ -351,7 +338,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
 
         if self.duplicate_name is None:
             self.duplicate_name = (
-                f"{self.selected_plan['name']} - Copia {uuid.uuid4().hex[:4]}"
+                f"{self.selected_plan['name']} - {uuid.uuid4().hex[:4]}"
             )
 
         return self.async_show_form(
@@ -366,6 +353,26 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             ),
             errors=errors,
         )
+
+    async def async_step_create_plan_success(self, user_input=None):
+        """Handle the success step of the config flow."""
+        return await self.async_step_plan_actions()
+
+    async def async_step_activate_plan_success(self, user_input=None):
+        """Handle the success step of the config flow."""
+        return await self.async_step_menu()
+
+    async def async_step_delete_plan_success(self, user_input=None):
+        """Handle the success step of the config flow."""
+        return await self.async_step_menu()
+
+    async def async_step_edit_plan_success(self, user_input=None):
+        """Handle the success step of the config flow."""
+        return await self.async_step_manage_plans()
+
+    async def async_step_duplicate_plan_success(self, user_input=None):
+        """Handle the success step of the config flow."""
+        return await self.async_step_plan_actions()
 
     async def async_step_manage_meals(
         self,
@@ -440,6 +447,100 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             reason="not_implemented",
         )
 
+    async def async_step_data_management(
+        self,
+        user_input=None,
+    ):
+        """Manage Meal Minder data."""
+
+        return self.async_show_menu(
+            step_id="data_management",
+            menu_options=[
+                "export_backup",
+                "import_backup",
+            ],
+        )
+
+    async def async_step_export_backup(self, user_input=None):
+        """Export Meal Minder backup."""
+
+        if user_input is not None:
+            return await self.async_step_init()
+
+        storage = self.hass.data[DOMAIN][self.config_entry.entry_id]
+
+        export_data = await storage.async_get_export_data()
+
+        export_text = json.dumps(
+            export_data,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        return self.async_show_form(
+            step_id="export_backup",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "backup",
+                        default=export_text,
+                    ): TextSelector(
+                        TextSelectorConfig(
+                            multiline=True,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_import_backup(
+        self,
+        user_input=None,
+    ):
+        """Import Meal Minder backup."""
+
+        if user_input is not None:
+            backup_text = user_input["backup"]
+
+            try:
+                import_data = json.loads(backup_text)
+
+            except json.JSONDecodeError:
+                return self.async_show_form(
+                    step_id="import_backup",
+                    data_schema=self._import_schema(
+                        backup_text,
+                    ),
+                    errors={
+                        "base": "invalid_json",
+                    },
+                )
+
+            storage = self.hass.data[DOMAIN][self.config_entry.entry_id]
+
+            try:
+                result = await storage.async_import_data(
+                    import_data,
+                )
+
+            except ValueError:
+                return self.async_show_form(
+                    step_id="import_backup",
+                    data_schema=self._import_schema(
+                        backup_text,
+                    ),
+                    errors={
+                        "base": "invalid_backup",
+                    },
+                )
+
+            return await self.async_step_init()
+
+        return self.async_show_form(
+            step_id="import_backup",
+            data_schema=self._import_schema(),
+        )
+
     async def _get_storage(self) -> MealMinderStorage:
         storage = self.hass.data[DOMAIN].get(self._config_entry.entry_id)
 
@@ -482,3 +583,21 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                 ),
             }
         )
+
+
+def _import_schema(
+    self,
+    default=None,
+):
+    return vol.Schema(
+        {
+            vol.Required(
+                "backup",
+                default=default or "",
+            ): TextSelector(
+                TextSelectorConfig(
+                    multiline=True,
+                )
+            )
+        }
+    )

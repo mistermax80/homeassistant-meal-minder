@@ -121,6 +121,18 @@ async def async_setup_entry(
 
         preparation = build_preparation(call.data)
 
+        weekday = call.data.get("weekday")
+
+        if weekday is not None:
+            weekday = int(weekday)
+
+        date = call.data.get("date")
+
+        # Se viene indicata una data specifica,
+        # weekday deve essere nullo
+        if date:
+            weekday = None
+
         await storage.async_add_meal(
             plan_id=call.data["plan_id"],
             meal_type=call.data["meal_type"],
@@ -138,12 +150,8 @@ async def async_setup_entry(
                     "12:00",
                 )
             )[:5],
-            weekday=call.data.get(
-                "weekday",
-            ),
-            date=call.data.get(
-                "date",
-            ),
+            weekday=weekday,
+            date=date,
             preparation=preparation,
         )
 
@@ -270,7 +278,7 @@ async def async_setup_entry(
             "items": items,
         }
 
-    async def export_config(call):
+    async def export_backup(call):
 
         path = await storage.async_export()
 
@@ -285,7 +293,7 @@ async def async_setup_entry(
             path,
         )
 
-    async def import_config(call):
+    async def import_backup(call):
 
         path = call.data["path"]
 
@@ -370,14 +378,14 @@ async def async_setup_entry(
 
         hass.services.async_register(
             DOMAIN,
-            "export_config",
-            export_config,
+            "export_backup",
+            export_backup,
         )
 
         hass.services.async_register(
             DOMAIN,
-            "import_config",
-            import_config,
+            "import_backup",
+            import_backup,
         )
 
     await hass.config_entries.async_forward_entry_setups(

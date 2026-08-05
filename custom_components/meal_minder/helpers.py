@@ -1,6 +1,6 @@
 """Helper functions for Meal Minder."""
 
-from .const import EVERY_DAY, MEAL_TYPES, WEEKDAY_LABELS
+from .const import MEAL_TYPES, WEEKDAY_LABELS
 
 
 def format_meal_label(meal: dict) -> str:
@@ -10,8 +10,6 @@ def format_meal_label(meal: dict) -> str:
         day_label = meal["date"]
     elif meal.get("weekday") is not None:
         day_label = WEEKDAY_LABELS[meal["weekday"]]
-    else:
-        day_label = EVERY_DAY
 
     meal_type = MEAL_TYPES.get(
         meal["type"],
@@ -29,10 +27,8 @@ def meal_sort_key(meal: dict) -> tuple:
 
     if meal.get("date"):
         day_order = 99
-    elif meal.get("weekday") is None:
-        day_order = -1
     else:
-        day_order = meal["weekday"]
+        day_order = int(meal["weekday"])
 
     return (
         day_order,

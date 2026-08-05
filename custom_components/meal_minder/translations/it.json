@@ -2,10 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "Meal Minder",
-        "description": "Configura il tuo pianificatore pasti",
+        "title": "Configura Meal Minder",
+        "description": "Crea una nuova istanza di Meal Minder per gestire i tuoi piani pasti.",
         "data": {
-          "name": "Nome integrazione"
+          "name": "Nome istanza"
         }
       }
     },
@@ -17,17 +17,125 @@
     "step": {
       "menu": {
         "title": "Gestione Meal Minder",
+        "menu_options": {
+          "create_plan": "➕ Nuovo piano",
+          "manage_plans": "📋 Gestisci piani",
+          "data_management": "⚙️ Gestisci dati"
+        }
+      },
+      "create_plan": {
+        "title": "Crea piano pasti",
         "data": {
-          "action": "Azione"
+          "name": "Nome piano",
+          "start_date": "Data inizio",
+          "end_date": "Data fine"
+        }
+      },
+      "edit_plan": {
+        "title": "Modifica piano pasti",
+        "data": {
+          "name": "Nome piano",
+          "start_date": "Data inizio",
+          "end_date": "Data fine"
+        }
+      },
+      "plan_actions": {
+        "title": "Gestisci piano pasti",
+        "data": {
+          "action": "Cosa vuoi fare?"
+        }
+      },
+      "manage_plans": {
+        "title": "Gestisci piani pasti",
+        "data": {
+          "plan_id": "Quale piano vuoi gestire?"
+        }
+      },
+      "create_plan_success": {
+        "title": "Piano creato con successo",
+        "description": "Il piano è stato creato correttamente."
+      },
+      "edit_plan_success": {
+        "title": "Piano modificato con successo",
+        "description": "Il piano è stato modificato correttamente."
+      },
+      "delete_plan_success": {
+        "title": "Piano eliminato con successo",
+        "description": "Il piano è stato eliminato correttamente."
+      },
+      "activate_plan_success": {
+        "title": "Piano attivato con successo",
+        "description": "Il piano è stato attivato correttamente."
+      },
+      "duplicate_plan_success": {
+        "title": "Piano duplicato con successo",
+        "description": "Il piano è stato duplicato correttamente."
+      },
+      "manage_meals": {
+        "title": "Gestisci pasti",
+        "data": {
+          "meal_id": "Quale pasto vuoi gestire?"
+        }
+      },
+      "data_management": {
+        "title": "Gestisci dati",
+        "data": {
+          "action": "Cosa vuoi fare?"
+        },
+        "menu_options": {
+          "export_backup": "📤 Crea backup dati",
+          "import_backup": "📥 Importa backup dati"
+        }
+      },
+      "export_backup": {
+        "title": "Esporta backup dati",
+        "description": "Copia il contenuto JSON per conservarlo. Non modificare il testo se vuoi poterlo ripristinare.",
+        "data": {
+          "backup": "Contenuto backup JSON"
+        }
+      },
+      "import_backup": {
+        "title": "Importa backup dati",
+        "description": "Incolla il contenuto JSON del backup nel campo sottostante.",
+        "data": {
+          "backup": "Backup JSON"
         }
       }
+    },
+    "error": {
+      "invalid_date": "La data non è valida.",
+      "invalid_date_range": "La data di fine deve essere successiva alla data di inizio.",
+      "do_not_delete_active_plan": "Non puoi eliminare il piano attivo. Imposta un altro piano come attivo prima di eliminarlo.",
+      "plan_not_found": "Il piano selezionato non è stato trovato.",
+      "unknown_error": "Si è verificato un errore imprevisto.",
+      "invalid_json": "Il contenuto inserito non è un JSON valido.",
+      "invalid_backup": "Il file inserito non è un backup Meal Minder valido."
+    },
+    "abort": {
+      "not_implemented": "Questa funzionalità non è ancora implementata.",
+      "do_not_delete_active_plan": "Non puoi eliminare il piano attivo. Imposta un altro piano come attivo prima di eliminarlo."
     }
   },
   "selector": {
-    "menu_action": {
+    "plan_actions": {
       "options": {
-        "create_plan": "➕ Nuovo piano",
-        "manage_plans": "📋 Gestisci piani"
+        "activate": "✅ Attiva",
+        "meals": "🍽 Gestisci pasti",
+        "edit": "📝 Modifica",
+        "duplicate": "📄 Duplica",
+        "delete": "🗑 Elimina"
+      }
+    },
+    "weekday": {
+      "options": {
+        "-1": "Tutti i giorni",
+        "0": "Lunedì",
+        "1": "Martedì",
+        "2": "Mercoledì",
+        "3": "Giovedì",
+        "4": "Venerdì",
+        "5": "Sabato",
+        "6": "Domenica"
       }
     }
   },

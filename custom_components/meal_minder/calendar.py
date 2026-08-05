@@ -75,6 +75,7 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
 
         meal_names = {
             "breakfast": "🍳 Colazione",
+            "snack": "🍪 Spuntino",
             "lunch": "🍝 Pranzo",
             "dinner": "🍽 Cena",
         }
@@ -169,6 +170,7 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
             "breakfast": "🍳 Colazione",
             "lunch": "🍝 Pranzo",
             "dinner": "🍽 Cena",
+            "snack": "🍪 Spuntino",
         }
 
         current_date = start_date.date()
