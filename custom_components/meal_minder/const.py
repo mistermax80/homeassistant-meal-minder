@@ -38,8 +38,6 @@ MEAL_TYPE_ORDER = {
     "dinner": 3,
 }
 
-EVERY_DAY = "Every day"
-
 WEEKDAY_LABELS = {
     0: "Monday",
     1: "Tuesday",
