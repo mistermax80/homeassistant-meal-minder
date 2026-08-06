@@ -636,11 +636,6 @@ class MealMinderStorage:
         if "plans" not in imported_data:
             raise ValueError("Invalid meal data")
 
-        #
-        # backup interno prima della sostituzione
-        #
-        current_backup = self._build_export_data()
-
         _LOGGER.info("Importing Meal Minder backup")
 
         self.data = imported_data

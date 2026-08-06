@@ -6,6 +6,7 @@ import uuid
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.components import persistent_notification
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.selector import (
@@ -477,6 +478,12 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             ensure_ascii=False,
         )
 
+        persistent_notification.async_create(
+            self.hass,
+            message="```json\n" + export_text,
+            title="Meal Minder Export Backup",
+        )
+
         return self.async_show_form(
             step_id="export_backup",
             data_schema=vol.Schema(
@@ -519,6 +526,26 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             storage = self.hass.data[DOMAIN][self.config_entry.entry_id]
 
             try:
+                #
+                # Backup preventivo
+                #
+                current_backup = await storage.async_get_export_data()
+
+                backup_text = json.dumps(
+                    current_backup,
+                    indent=2,
+                    ensure_ascii=False,
+                )
+
+                persistent_notification.async_create(
+                    self.hass,
+                    title="Meal Minder - Backup automatico pre-import",
+                    message=f"```json\n{backup_text}",
+                )
+
+                #
+                # Import
+                #
                 result = await storage.async_import_data(
                     import_data,
                 )
@@ -527,19 +554,33 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                 return self.async_show_form(
                     step_id="import_backup",
                     data_schema=self._import_schema(
-                        backup_text,
+                        user_input["backup"],
                     ),
                     errors={
                         "base": "invalid_backup",
                     },
                 )
 
-            return await self.async_step_init()
+            return self.async_show_form(
+                step_id="import_success",
+                data_schema=vol.Schema({}),
+                description_placeholders={
+                    "plans": str(result.get("plans", 0)),
+                },
+            )
 
         return self.async_show_form(
             step_id="import_backup",
             data_schema=self._import_schema(),
         )
+
+    async def async_step_import_success(
+        self,
+        user_input=None,
+    ):
+        """Handle the success step of the config flow."""
+
+        return await self.async_step_init()
 
     async def _get_storage(self) -> MealMinderStorage:
         storage = self.hass.data[DOMAIN].get(self._config_entry.entry_id)
@@ -584,20 +625,19 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
-
-def _import_schema(
-    self,
-    default=None,
-):
-    return vol.Schema(
-        {
-            vol.Required(
-                "backup",
-                default=default or "",
-            ): TextSelector(
-                TextSelectorConfig(
-                    multiline=True,
+    def _import_schema(
+        self,
+        default=None,
+    ):
+        return vol.Schema(
+            {
+                vol.Required(
+                    "backup",
+                    default=default or "",
+                ): TextSelector(
+                    TextSelectorConfig(
+                        multiline=True,
+                    )
                 )
-            )
-        }
-    )
+            }
+        )
