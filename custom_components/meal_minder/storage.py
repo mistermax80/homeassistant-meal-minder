@@ -426,6 +426,18 @@ class MealMinderStorage:
             [],
         )
 
+    async def async_get_plan(
+        self,
+        plan_id: str,
+    ) -> dict | None:
+        """Return a single meal plan by id."""
+
+        for plan in self.data.get("plans", []):
+            if plan.get("id") == plan_id:
+                return plan
+
+        return None
+
     async def async_update_plan(
         self,
         plan_id: str,

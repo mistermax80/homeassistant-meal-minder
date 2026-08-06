@@ -57,3 +57,4 @@ htmlcov/
 .env
 .env.*
 secrets.yaml
+custom_components/meal_minder/appunti.txt

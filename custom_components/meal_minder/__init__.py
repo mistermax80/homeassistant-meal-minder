@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
+from . import websocket_api
 from .const import DOMAIN
 from .storage import MealMinderStorage
 
@@ -33,6 +34,8 @@ async def async_setup_entry(
         hass,
         entry.entry_id,
     )
+
+    websocket_api.async_register(hass)
 
     await storage.async_load()
 
