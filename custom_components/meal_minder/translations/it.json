@@ -179,14 +179,6 @@
     "set_active_plan": {
       "name": "Imposta piano attivo",
       "description": "Imposta il piano utilizzato da Meal Minder"
-    },
-    "export_config": {
-      "name": "Esporta configurazione",
-      "description": "Esporta la configurazione Meal Minder"
-    },
-    "import_config": {
-      "name": "Importa configurazione",
-      "description": "Importa una configurazione Meal Minder"
     }
   }
 }

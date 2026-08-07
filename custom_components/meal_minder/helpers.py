@@ -35,3 +35,32 @@ def meal_sort_key(meal: dict) -> tuple:
         meal.get("date") or "",
         meal.get("time") or "00:00",
     )
+
+
+def build_preparation(data: dict) -> dict | None:
+    """Build a preparation dictionary from service call data."""
+
+    offset = data.get("preparation_offset")
+
+    items = [
+        item.strip()
+        for item in data.get(
+            "preparation_items",
+            "",
+        ).splitlines()
+        if item.strip()
+    ]
+
+    if offset is None and not items:
+        return None
+
+    if offset is None and items:
+        raise ValueError("Preparation offset required when preparation items are set")
+
+    if offset is not None and not items:
+        raise ValueError("Preparation items required when offset is set")
+
+    return {
+        "offset": int(offset),
+        "items": items,
+    }
