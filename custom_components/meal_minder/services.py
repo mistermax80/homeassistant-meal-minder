@@ -6,6 +6,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .events import async_fire_updated
 from .helpers import build_preparation
 from .storage_manager import get_storage
 
@@ -131,11 +132,9 @@ class MealMinderServices:
         )
 
         if updated:
-            self.hass.bus.async_fire(
-                "meal_minder_updated",
-                {
-                    "entry_id": self.storage.entry_id,
-                },
+            async_fire_updated(
+                self.hass,
+                self.storage.entry_id,
             )
 
     async def delete_plan(self, call: ServiceCall):
@@ -144,11 +143,9 @@ class MealMinderServices:
         deleted = await self.storage.async_delete_plan(call.data["id"])
 
         if deleted:
-            self.hass.bus.async_fire(
-                "meal_minder_updated",
-                {
-                    "entry_id": self.storage.entry_id,
-                },
+            async_fire_updated(
+                self.hass,
+                self.storage.entry_id,
             )
 
     async def set_active_plan(self, call: ServiceCall):
@@ -157,11 +154,9 @@ class MealMinderServices:
         updated = await self.storage.async_set_active_plan(call.data["id"])
 
         if updated:
-            self.hass.bus.async_fire(
-                "meal_minder_updated",
-                {
-                    "entry_id": self.storage.entry_id,
-                },
+            async_fire_updated(
+                self.hass,
+                self.storage.entry_id,
             )
 
     async def create_plan(self, call: ServiceCall):
@@ -173,11 +168,9 @@ class MealMinderServices:
             end_date=call.data["end_date"],
         )
 
-        self.hass.bus.async_fire(
-            "meal_minder_updated",
-            {
-                "entry_id": self.storage.entry_id,
-            },
+        async_fire_updated(
+            self.hass,
+            self.storage.entry_id,
         )
 
         return {
@@ -222,11 +215,9 @@ class MealMinderServices:
             preparation=preparation,
         )
 
-        self.hass.bus.async_fire(
-            "meal_minder_updated",
-            {
-                "entry_id": self.storage.entry_id,
-            },
+        async_fire_updated(
+            self.hass,
+            self.storage.entry_id,
         )
 
     async def remove_meal(self, call: ServiceCall):
@@ -235,11 +226,9 @@ class MealMinderServices:
         removed = await self.storage.async_remove_meal(call.data["id"])
 
         if removed:
-            self.hass.bus.async_fire(
-                "meal_minder_updated",
-                {
-                    "entry_id": self.storage.entry_id,
-                },
+            async_fire_updated(
+                self.hass,
+                self.storage.entry_id,
             )
 
     async def update_meal(self, call: ServiceCall):
@@ -290,11 +279,9 @@ class MealMinderServices:
         )
 
         if updated:
-            self.hass.bus.async_fire(
-                "meal_minder_updated",
-                {
-                    "entry_id": self.storage.entry_id,
-                },
+            async_fire_updated(
+                self.hass,
+                self.storage.entry_id,
             )
 
     async def get_meals(self, call: ServiceCall):

@@ -19,6 +19,7 @@ from .const import (
     STORAGE_MINOR_VERSION,
     STORAGE_VERSION,
 )
+from .events import async_fire_updated
 from .exceptions import InvalidDateError, InvalidDateRangeError, PlanNotFoundError
 from .models import Meal, MealPlan
 
@@ -654,9 +655,9 @@ class MealMinderStorage:
 
         await self.async_save()
 
-        self.hass.bus.async_fire(
-            "meal_minder_updated",
-            {"entry_id": self.entry_id},
+        async_fire_updated(
+            self.hass,
+            self.storage.entry_id,
         )
 
         return {
@@ -781,7 +782,7 @@ class MealMinderStorage:
         #
         # Aggiorna sensori/calendari
         #
-        self.hass.bus.async_fire("meal_minder_updated", {"entry_id": self.entry_id})
+        async_fire_updated(self.hass, self.entry_id)
 
         return {
             "backup": str(backup_path),
