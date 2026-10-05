@@ -32,7 +32,7 @@ async def async_setup_entry(
 
     """
 
-    storage = hass.data[DOMAIN][entry.entry_id]
+    storage = hass.data[DOMAIN]["instances"][entry.entry_id]
 
     async_add_entities(
         [

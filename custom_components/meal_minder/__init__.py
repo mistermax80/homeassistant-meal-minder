@@ -39,10 +39,13 @@ async def async_setup_entry(
 
     hass.data.setdefault(
         DOMAIN,
-        {},
+        {
+            "instances": {},
+            "services": {},
+        },
     )
 
-    hass.data[DOMAIN][entry.entry_id] = storage
+    hass.data[DOMAIN]["instances"][entry.entry_id] = storage
 
     await async_register_services(hass)
 
@@ -65,7 +68,7 @@ async def async_unload_entry(
     )
 
     if unload_ok:
-        hass.data[DOMAIN].pop(
+        hass.data[DOMAIN]["instances"].pop(
             entry.entry_id,
             None,
         )

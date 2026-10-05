@@ -2,6 +2,13 @@ add_meal:
   name: Add meal
   description: Add a meal to the meal plan
   fields:
+    entry_id:
+      name: Meal Minder instance
+      description: Config entry ID of the Meal Minder instance
+      required: true
+      selector:
+        text:
+
     plan_id:
       name: Plan ID
       description: Meal plan identifier
@@ -90,6 +97,13 @@ remove_meal:
   name: Remove meal
   description: Remove a meal from the plan
   fields:
+    entry_id:
+      name: Meal Minder instance
+      description: Config entry ID of the Meal Minder instance
+      required: true
+      selector:
+        text:
+        
     id:
       name: Meal ID
       description: ID of the meal to remove
@@ -101,6 +115,13 @@ update_meal:
   name: Update meal
   description: Update an existing meal
   fields:
+    entry_id:
+      name: Meal Minder instance
+      description: Config entry ID of the Meal Minder instance
+      required: true
+      selector:
+        text:
+
     id:
       name: Meal ID
       description: ID of the meal to update
@@ -168,6 +189,7 @@ update_meal:
         select:
           options:
             - breakfast
+            - snack
             - lunch
             - dinner
 
@@ -209,6 +231,13 @@ get_meals:
   name: Get meals
   description: Get meals from the meal plan
   fields:
+    entry_id:
+      name: Meal Minder instance
+      description: Config entry ID of the Meal Minder instance
+      required: true
+      selector:
+        text:
+
     plan_id:
       name: Plan ID
       description: Filter by meal plan
@@ -241,89 +270,6 @@ get_meals:
         select:
           options:
             - breakfast
+            - snack
             - lunch
             - dinner
-
-create_plan:
-  name: Create meal plan
-  description: Create a new meal plan
-  fields:
-    name:
-      name: Name
-      description: Meal plan name
-      required: true
-      selector:
-        text:
-
-    start_date:
-      name: Start date
-      description: Plan start date (YYYY-MM-DD)
-      required: true
-      selector:
-        date:
-
-    end_date:
-      name: End date
-      description: Plan end date (YYYY-MM-DD)
-      required: true
-      selector:
-        date:
-
-get_plans:
-  name: Get meal plans
-  description: Get all available meal plans
-  fields: {}
-
-update_plan:
-  name: Update meal plan
-  description: Update an existing meal plan
-  fields:
-    id:
-      name: Plan ID
-      description: ID of the meal plan to update
-      required: true
-      selector:
-        text:
-
-    name:
-      name: Name
-      description: Meal plan name
-      required: false
-      selector:
-        text:
-
-    start_date:
-      name: Start date
-      description: Plan start date (YYYY-MM-DD)
-      required: false
-      selector:
-        date:
-
-    end_date:
-      name: End date
-      description: Plan end date (YYYY-MM-DD)
-      required: false
-      selector:
-        date:
-
-delete_plan:
-  name: Delete meal plan
-  description: Delete an existing meal plan
-  fields:
-    id:
-      name: Plan ID
-      description: ID of the meal plan to delete
-      required: true
-      selector:
-        text:
-
-set_active_plan:
-  name: Set active meal plan
-  description: Set the active meal plan used by calendar and automations
-  fields:
-    id:
-      name: Plan ID
-      description: ID of the meal plan to activate
-      required: true
-      selector:
-        text:

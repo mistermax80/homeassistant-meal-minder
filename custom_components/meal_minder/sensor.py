@@ -1,7 +1,7 @@
 """Sensor platform for Meal Minder."""
 
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant
@@ -25,7 +25,7 @@ async def async_setup_entry(
     next preparation reminder, and next meal reminder.
     """
 
-    storage = hass.data[DOMAIN][entry.entry_id]
+    storage = hass.data[DOMAIN]["instances"][entry.entry_id]
 
     async_add_entities(
         [

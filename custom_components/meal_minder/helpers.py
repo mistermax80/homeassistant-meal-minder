@@ -1,6 +1,22 @@
 """Helper functions for Meal Minder."""
 
+import re
+
 from .const import MEAL_TYPES, WEEKDAY_LABELS
+
+
+def create_instance_id(name: str) -> str:
+    """Create a stable instance ID from an instance name."""
+
+    value = name.strip().lower()
+
+    value = re.sub(
+        r"[^a-z0-9]+",
+        "_",
+        value,
+    )
+
+    return value.strip("_")
 
 
 def format_meal_label(meal: dict) -> str:

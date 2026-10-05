@@ -9,16 +9,13 @@ from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
-from homeassistant.helpers.selector import (
-    TextSelector,
-    TextSelectorConfig,
-)
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .exceptions import InvalidDateError, InvalidDateRangeError, PlanNotFoundError
-from .helpers import format_meal_label, meal_sort_key
-from .storage import MealMinderStorage
+from .helpers import create_instance_id, format_meal_label, meal_sort_key
+from .storage_manager import get_storage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,13 +35,30 @@ class MealMinderConfigFlow(
         """Handle the user step of the config flow."""
 
         if user_input is not None:
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
+            instance_id = create_instance_id(user_input["name"])
+
+            for entry in self.hass.config_entries.async_entries(DOMAIN):
+                if entry.data.get("instance_id") == instance_id:
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=vol.Schema(
+                            {
+                                vol.Required(
+                                    "name",
+                                    default=user_input["name"],
+                                ): str,
+                            }
+                        ),
+                        errors={
+                            "base": "instance_id_exists",
+                        },
+                    )
 
             return self.async_create_entry(
                 title=user_input["name"],
                 data={
                     "name": user_input["name"],
+                    "instance_id": instance_id,
                 },
             )
 
@@ -77,6 +91,11 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         self.selected_plan = None
         self.duplicate_name = None
         self.selected_meal = None
+
+    @property
+    def storage(self):
+        """Return the storage instance."""
+        return get_storage(self.hass, self._config_entry.entry_id)
 
     async def async_step_init(
         self,
@@ -116,15 +135,13 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         user_input=None,
     ) -> FlowResult:
         """Manage selected plan."""
-
-        storage: MealMinderStorage = await self._get_storage()
-        active = await storage.async_get_active_plan()
+        active = await self.storage.async_get_active_plan()
 
         if user_input:
             action = user_input["action"]
 
             if action == "activate":
-                await storage.async_set_active_plan(
+                await self.storage.async_set_active_plan(
                     self.selected_plan["id"],
                 )
 
@@ -137,7 +154,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                 if active is not None and self.selected_plan["id"] == active["id"]:
                     return self.async_abort(reason="do_not_delete_active_plan")
 
-                await storage.async_delete_plan(
+                await self.storage.async_delete_plan(
                     self.selected_plan["id"],
                 )
 
@@ -186,10 +203,8 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input:
-            storage = await self._get_storage()
-
             try:
-                self.selected_plan = await storage.async_create_plan(
+                self.selected_plan = await self.storage.async_create_plan(
                     name=user_input["name"],
                     start_date=user_input["start_date"],
                     end_date=user_input["end_date"],
@@ -223,10 +238,8 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input:
-            storage = await self._get_storage()
-
             try:
-                await storage.async_update_plan(
+                await self.storage.async_update_plan(
                     plan_id=self.selected_plan["id"],
                     name=user_input["name"],
                     start_date=user_input["start_date"],
@@ -260,11 +273,9 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Show available meal plans."""
 
-        storage: MealMinderStorage = await self._get_storage()
+        plans = await self.storage.async_get_plans()
 
-        plans = await storage.async_get_plans()
-
-        active = await storage.async_get_active_plan()
+        active = await self.storage.async_get_active_plan()
 
         options = []
 
@@ -319,9 +330,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
 
         if user_input:
             try:
-                storage: MealMinderStorage = await self._get_storage()
-
-                self.selected_plan = await storage.async_duplicate_plan(
+                self.selected_plan = await self.storage.async_duplicate_plan(
                     plan_id=self.selected_plan["id"],
                     name=user_input["name"],
                 )
@@ -381,9 +390,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage meals of the selected plan."""
 
-        storage = await self._get_storage()
-
-        plans = await storage.async_get_plans()
+        plans = await self.storage.async_get_plans()
 
         plan = next(plan for plan in plans if plan["id"] == self.selected_plan["id"])
 
@@ -468,7 +475,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return await self.async_step_init()
 
-        storage = self.hass.data[DOMAIN][self.config_entry.entry_id]
+        storage = self.storage
 
         export_data = await storage.async_get_export_data()
 
@@ -523,7 +530,7 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
                     },
                 )
 
-            storage = self.hass.data[DOMAIN][self.config_entry.entry_id]
+            storage = self.storage
 
             try:
                 #
@@ -581,14 +588,6 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
         """Handle the success step of the config flow."""
 
         return await self.async_step_init()
-
-    async def _get_storage(self) -> MealMinderStorage:
-        storage = self.hass.data[DOMAIN].get(self._config_entry.entry_id)
-
-        if storage is None:
-            raise RuntimeError("Meal Minder storage not initialized")
-
-        return storage
 
     def _plan_schema(
         self,

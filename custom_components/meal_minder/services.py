@@ -16,22 +16,13 @@ _LOGGER = logging.getLogger(__name__)
 #
 # Service registration
 #
-
-
 async def async_register_services(hass: HomeAssistant) -> None:
     """Register Meal Minder services."""
 
-    if hass.data[DOMAIN].get("services_registered"):
+    if hass.data[DOMAIN].get("services", {}).get("registered"):
         return
 
     service = MealMinderServices(hass)
-
-    hass.services.async_register(
-        DOMAIN,
-        "create_plan",
-        service.create_plan,
-        supports_response=SupportsResponse.ONLY,
-    )
 
     hass.services.async_register(
         DOMAIN,
@@ -58,32 +49,12 @@ async def async_register_services(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.ONLY,
     )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_plans",
-        service.get_plans,
-        supports_response=SupportsResponse.ONLY,
+    hass.data[DOMAIN].setdefault(
+        "services",
+        {},
     )
 
-    hass.services.async_register(
-        DOMAIN,
-        "update_plan",
-        service.update_plan,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        "delete_plan",
-        service.delete_plan,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        "set_active_plan",
-        service.set_active_plan,
-    )
-
-    hass.data[DOMAIN]["services_registered"] = True
+    hass.data[DOMAIN]["services"]["registered"] = True
 
 
 class MealMinderServices:
@@ -93,92 +64,21 @@ class MealMinderServices:
         """Initialize MealMinderServices."""
         self.hass = hass
 
-    @property
-    def storage(self):
-        """Return the storage instance."""
-        return get_storage(self.hass)
+    def _get_storage(
+        self,
+        call: ServiceCall,
+    ):
+        """Return storage for the requested instance."""
 
-    async def get_plans(self, call: ServiceCall):
-        """Return all stored meal plans.
-
-        Parameters
-        ----------
-        call : ServiceCall
-            The incoming service call (unused).
-
-        Returns:
-        -------
-        dict
-            A dictionary with key "plans" containing the list of plans.
-
-        """
-
-        plans = await self.storage.async_get_plans()
-
-        return {
-            "plans": plans,
-        }
-
-    async def update_plan(self, call: ServiceCall):
-        """Update a meal plan with the provided data."""
-
-        data = call.data.copy()
-
-        plan_id = data.pop("id")
-
-        updated = await self.storage.async_update_plan(
-            plan_id,
-            **data,
-        )
-
-        if updated:
-            async_fire_updated(
-                self.hass,
-                self.storage.entry_id,
-            )
-
-    async def delete_plan(self, call: ServiceCall):
-        """Delete a meal plan by its ID."""
-
-        deleted = await self.storage.async_delete_plan(call.data["id"])
-
-        if deleted:
-            async_fire_updated(
-                self.hass,
-                self.storage.entry_id,
-            )
-
-    async def set_active_plan(self, call: ServiceCall):
-        """Set a meal plan as the active plan."""
-
-        updated = await self.storage.async_set_active_plan(call.data["id"])
-
-        if updated:
-            async_fire_updated(
-                self.hass,
-                self.storage.entry_id,
-            )
-
-    async def create_plan(self, call: ServiceCall):
-        """Create a new meal plan with the provided data."""
-
-        plan = await self.storage.async_create_plan(
-            name=call.data["name"],
-            start_date=call.data["start_date"],
-            end_date=call.data["end_date"],
-        )
-
-        async_fire_updated(
+        return get_storage(
             self.hass,
-            self.storage.entry_id,
+            call.data["entry_id"],
         )
-
-        return {
-            "plan": plan,
-        }
 
     async def add_meal(self, call: ServiceCall):
         """Add a new meal to a meal plan with the provided data."""
+        storage = self._get_storage(call)
+
         preparation = build_preparation(call.data)
 
         weekday = call.data.get("weekday")
@@ -193,7 +93,7 @@ class MealMinderServices:
         if date:
             weekday = None
 
-        await self.storage.async_add_meal(
+        await storage.async_add_meal(
             plan_id=call.data["plan_id"],
             meal_type=call.data["meal_type"],
             items=[
@@ -217,18 +117,19 @@ class MealMinderServices:
 
         async_fire_updated(
             self.hass,
-            self.storage.entry_id,
+            storage.entry_id,
         )
 
     async def remove_meal(self, call: ServiceCall):
         """Remove a meal from a meal plan by its ID."""
+        storage = self._get_storage(call)
 
-        removed = await self.storage.async_remove_meal(call.data["id"])
+        removed = await storage.async_remove_meal(call.data["id"])
 
         if removed:
             async_fire_updated(
                 self.hass,
-                self.storage.entry_id,
+                storage.entry_id,
             )
 
     async def update_meal(self, call: ServiceCall):
@@ -273,7 +174,8 @@ class MealMinderServices:
                 None,
             )
 
-        updated = await self.storage.async_update_meal(
+        storage = self._get_storage(call)
+        updated = await storage.async_update_meal(
             meal_id,
             **data,
         )
@@ -281,13 +183,13 @@ class MealMinderServices:
         if updated:
             async_fire_updated(
                 self.hass,
-                self.storage.entry_id,
+                storage.entry_id,
             )
 
     async def get_meals(self, call: ServiceCall):
         """Return all meals for today."""
 
-        storage = self.storage
+        storage = self._get_storage(call)
         today = dt_util.now().date()
 
         meals = await storage.async_get_resolved_meals(today)

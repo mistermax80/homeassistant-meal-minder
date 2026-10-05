@@ -113,7 +113,8 @@
       "plan_not_found": "Il piano selezionato non è stato trovato.",
       "unknown_error": "Si è verificato un errore imprevisto.",
       "invalid_json": "Il contenuto inserito non è un JSON valido.",
-      "invalid_backup": "Il file inserito non è un backup Meal Minder valido."
+      "invalid_backup": "Il file inserito non è un backup Meal Minder valido.",
+      "instance_id_exists": "Un'istanza con questo nome esiste già."
     },
     "abort": {
       "not_implemented": "Questa funzionalità non è ancora implementata.",
@@ -144,10 +145,6 @@
     }
   },
   "services": {
-    "create_plan": {
-      "name": "Crea piano pasti",
-      "description": "Crea un nuovo piano pasti"
-    },
     "add_meal": {
       "name": "Aggiungi pasto",
       "description": "Aggiunge un pasto al piano"
@@ -163,22 +160,6 @@
     "get_meals": {
       "name": "Recupera pasti",
       "description": "Recupera i pasti del piano attivo"
-    },
-    "get_plans": {
-      "name": "Recupera piani pasti",
-      "description": "Recupera i piani disponibili"
-    },
-    "update_plan": {
-      "name": "Modifica piano pasti",
-      "description": "Modifica un piano esistente"
-    },
-    "delete_plan": {
-      "name": "Elimina piano pasti",
-      "description": "Elimina un piano pasti"
-    },
-    "set_active_plan": {
-      "name": "Imposta piano attivo",
-      "description": "Imposta il piano utilizzato da Meal Minder"
     }
   }
 }

@@ -8,16 +8,21 @@ from .const import DOMAIN
 
 def get_storage(
     hass: HomeAssistant,
+    entry_id: str,
 ):
-    """Return active Meal Minder storage."""
+    """Return Meal Minder storage."""
 
     instances = hass.data.get(
         DOMAIN,
         {},
+    ).get(
+        "instances",
+        {},
     )
 
-    for key, storage in instances.items():
-        if key != "services_registered":
-            return storage
+    storage = instances.get(entry_id)
 
-    raise HomeAssistantError("Meal Minder storage not initialized")
+    if storage is None:
+        raise HomeAssistantError(f"Meal Minder storage not found: {entry_id}")
+
+    return storage
