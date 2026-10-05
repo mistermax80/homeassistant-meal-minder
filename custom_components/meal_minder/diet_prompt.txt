@@ -1,0 +1,406 @@
+# CONVERSIONE DIETA PDF → MEAL MINDER JSON
+
+Analizza attentamente il PDF della dieta allegato e trasformalo in un JSON compatibile con l'importazione di Meal Minder.
+
+## OBIETTIVO
+
+Il JSON prodotto verrà copiato direttamente nell'integrazione Home Assistant **Meal Minder** tramite:
+
+**Meal Minder → Gestisci dati → Importa dieta**
+
+Il risultato deve quindi essere **JSON puro e valido**, senza testo aggiuntivo.
+
+---
+
+## REGOLE IMPORTANTI
+
+### 1. Usa esclusivamente le informazioni presenti nel PDF
+
+Non inventare:
+
+* alimenti
+* quantità
+* orari
+* giorni
+* ricette
+* preparazioni
+* sostituzioni
+* calorie
+* macronutrienti
+* informazioni nutrizionali
+
+Se un'informazione non è presente nel PDF, non inventarla.
+
+Quando un'informazione opzionale non è disponibile, usa `null` oppure ometti il campo secondo le regole indicate sotto.
+
+### 2. Mantieni fedelmente quantità e descrizioni
+
+Se il PDF dice:
+
+* `80 g pasta`
+* `1 yogurt`
+* `150 ml latte`
+* `2 uova`
+* `frutta fresca q.b.`
+
+mantieni queste informazioni nel campo `items` senza modificarle arbitrariamente.
+
+Non convertire automaticamente le unità di misura.
+
+Non fare calcoli o conversioni non richiesti.
+
+### 3. Non aggiungere informazioni nutrizionali
+
+Non trasformare gli alimenti in valori calorici o nutrizionali.
+
+Meal Minder deve contenere il pasto e i suoi alimenti, non un'analisi nutrizionale.
+
+---
+
+# STRUTTURA JSON OBBLIGATORIA
+
+Il risultato deve avere esattamente questa struttura generale:
+
+{
+"name": "Nome della dieta",
+"start_date": "YYYY-MM-DD",
+"end_date": "YYYY-MM-DD",
+"meals": [
+{
+"weekday": 0,
+"time": "08:00",
+"type": "breakfast",
+"items": [
+"Alimento 1",
+"Alimento 2"
+],
+"preparation": null
+}
+]
+}
+
+---
+
+# CAMPO name
+
+Usa come `name` il nome della dieta presente nel PDF.
+
+Se il PDF non contiene un nome esplicito, usa un nome descrittivo neutro, ad esempio:
+
+"Dieta importata"
+
+Non inventare un nome riferito a patologie, obiettivi o caratteristiche personali che non siano esplicitamente presenti nel documento.
+
+---
+
+# DATE
+
+I campi:
+
+`start_date`
+
+e
+
+`end_date`
+
+devono essere sempre presenti e devono usare esclusivamente il formato:
+
+YYYY-MM-DD
+
+Esempio:
+
+"start_date": "2026-10-06",
+"end_date": "2026-11-05"
+
+Se il PDF contiene un periodo preciso, utilizzalo.
+
+Se il PDF contiene soltanto una data di inizio ma non una data di fine, non inventare una durata arbitraria.
+
+In questo caso utilizza come `end_date` la stessa data di `start_date`, a meno che dal documento sia chiaramente ricavabile un periodo diverso.
+
+Se non è possibile determinare nemmeno una data di riferimento, usa:
+
+"start_date": "YYYY-MM-DD",
+"end_date": "YYYY-MM-DD"
+
+sostituendo le date con la data corrente solo se il sistema che sta eseguendo il prompt conosce chiaramente la data corrente.
+
+---
+
+# GIORNI DELLA SETTIMANA
+
+Meal Minder utilizza questi valori:
+
+* `0` = Lunedì
+* `1` = Martedì
+* `2` = Mercoledì
+* `3` = Giovedì
+* `4` = Venerdì
+* `5` = Sabato
+* `6` = Domenica
+* `-1` = Tutti i giorni
+
+Usa il valore numerico corretto.
+
+Esempio:
+
+Lunedì:
+
+"weekday": 0
+
+Domenica:
+
+"weekday": 6
+
+---
+
+# COME INTERPRETARE I GIORNI
+
+Se il PDF contiene una dieta organizzata per singoli giorni, crea i pasti con il relativo `weekday`.
+
+Esempio:
+
+Lunedì colazione:
+
+{
+"weekday": 0,
+...
+}
+
+Martedì colazione:
+
+{
+"weekday": 1,
+...
+}
+
+Se un pasto è esplicitamente indicato come valido per tutti i giorni, puoi utilizzare:
+
+"weekday": -1
+
+NON utilizzare `-1` semplicemente perché il pasto sembra ripetersi.
+
+Usalo soltanto quando dal PDF risulta che quel pasto è valido per tutti i giorni.
+
+---
+
+# DATA SPECIFICA
+
+Se la dieta contiene pasti associati a date specifiche anziché a giorni della settimana, puoi utilizzare:
+
+"date": "YYYY-MM-DD"
+
+Esempio:
+
+{
+"date": "2026-10-12",
+"time": "08:00",
+"type": "breakfast",
+"items": [
+"..."
+],
+"preparation": null
+}
+
+Un pasto NON deve contenere contemporaneamente:
+
+`weekday`
+
+e
+
+`date`.
+
+Usa uno solo dei due.
+
+---
+
+# ORARI
+
+Il campo `time` deve essere sempre presente.
+
+Usa il formato:
+
+HH:MM
+
+Esempio:
+
+"08:00"
+
+"13:00"
+
+"19:30"
+
+Se il PDF specifica un orario, utilizzalo.
+
+Se il PDF non specifica alcun orario ma indica chiaramente il momento del pasto, utilizza questi valori predefiniti:
+
+* colazione → `08:00`
+* spuntino mattutino → `10:30`
+* pranzo → `13:00`
+* spuntino pomeridiano → `16:30`
+* cena → `20:00`
+* spuntino serale → `22:00`
+
+Questi orari devono essere utilizzati **solo quando l'orario non è presente nel PDF**.
+
+Non modificare un orario esplicitamente indicato.
+
+---
+
+# TIPO DI PASTO
+
+Il campo `type` deve contenere un identificatore semplice in inglese.
+
+Utilizza preferibilmente:
+
+* `breakfast`
+* `morning_snack`
+* `lunch`
+* `afternoon_snack`
+* `dinner`
+* `evening_snack`
+
+Se il PDF utilizza un tipo di pasto diverso e non è riconducibile chiaramente a uno dei precedenti, utilizza una stringa breve e descrittiva.
+
+Non tradurre il valore tecnico del campo `type`.
+
+---
+
+# ITEMS
+
+`items` deve essere sempre una lista di stringhe.
+
+Ogni alimento o componente significativo del pasto deve essere rappresentato come elemento separato quando questo rende il pasto più leggibile.
+
+Esempio:
+
+{
+"items": [
+"80 g pasta integrale",
+"150 g petto di pollo",
+"verdure",
+"10 g olio extravergine di oliva"
+]
+}
+
+Mantieni quantità, unità di misura e indicazioni presenti nel PDF.
+
+Non fare somme o conversioni.
+
+---
+
+# PREPARAZIONE
+
+Il campo `preparation` è opzionale.
+
+Se il PDF contiene istruzioni di preparazione esplicite, puoi strutturarle in un oggetto.
+
+Esempio:
+
+"preparation": {
+"steps": [
+"Cuocere la pasta.",
+"Aggiungere il condimento."
+]
+}
+
+Se non ci sono istruzioni di preparazione:
+
+"preparation": null
+
+Non inventare procedure di cottura.
+
+---
+
+# SOSTITUZIONI
+
+Se il PDF indica alternative o sostituzioni esplicite, mantienile nell'elemento `items` senza inventarne altre.
+
+Esempio:
+
+{
+"items": [
+"150 g pollo oppure 150 g tacchino"
+]
+}
+
+Non scegliere arbitrariamente una delle alternative.
+
+---
+
+# PASTI RIPETUTI
+
+Se lo stesso pasto compare in più giorni, crea comunque gli elementi necessari per rappresentare correttamente la dieta.
+
+Non eliminare informazioni soltanto perché duplicate.
+
+Puoi utilizzare `weekday: -1` soltanto quando il PDF indica chiaramente che il pasto è uguale per tutti i giorni.
+
+---
+
+# ORDINE DEI PASTI
+
+Mantieni i pasti in ordine cronologico.
+
+Per ogni giorno, ordina i pasti in base all'orario.
+
+---
+
+# CONTROLLI PRIMA DELL'OUTPUT
+
+Prima di produrre il risultato verifica:
+
+1. Il JSON è sintatticamente valido.
+2. Esiste `name`.
+3. Esiste `start_date`.
+4. Esiste `end_date`.
+5. Esiste `meals`.
+6. `meals` è una lista.
+7. Ogni pasto contiene `time`.
+8. Ogni pasto contiene `type`.
+9. Ogni pasto contiene `items`.
+10. `items` è sempre una lista di stringhe.
+11. Nessun pasto contiene contemporaneamente `weekday` e `date`.
+12. `weekday` è compreso tra `-1` e `6`.
+13. Le date sono nel formato `YYYY-MM-DD`.
+14. Gli orari sono nel formato `HH:MM`.
+15. Non sono stati inventati alimenti o quantità.
+16. Non sono state aggiunte informazioni nutrizionali non presenti nel PDF.
+17. Il JSON non contiene commenti.
+18. Il JSON non contiene Markdown.
+19. Il JSON non contiene testo prima o dopo l'oggetto JSON.
+
+---
+
+# GESTIONE DELL'AMBIGUITÀ
+
+Se il PDF contiene informazioni ambigue, incomplete o illeggibili:
+
+* non inventare il dato;
+* usa `null` quando il campo lo consente;
+* mantieni fedelmente il testo leggibile;
+* non correggere arbitrariamente quantità o alimenti.
+
+Se una parte del PDF non è sufficientemente leggibile per produrre un dato affidabile, non ricostruirla usando conoscenze generali.
+
+---
+
+# OUTPUT FINALE
+
+Restituisci **ESCLUSIVAMENTE il JSON finale**.
+
+Non usare:
+
+````text
+```json
+````
+
+Non aggiungere spiegazioni.
+
+Non aggiungere introduzioni.
+
+Non aggiungere conclusioni.
+
+Il risultato deve poter essere copiato direttamente e incollato in:
+
+**Meal Minder → Gestisci dati → Importa dieta**

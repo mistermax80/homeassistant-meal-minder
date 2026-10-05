@@ -98,7 +98,7 @@ class MealMinderStorage:
         if start_date is None or end_date is None:
             raise InvalidDateError
 
-        if _parse_plan_date(end_date) <= _parse_plan_date(start_date):
+        if _parse_plan_date(end_date) < _parse_plan_date(start_date):
             raise InvalidDateRangeError
 
         plan = MealPlan.create(
@@ -272,7 +272,7 @@ class MealMinderStorage:
 
         return []
 
-    async def async_get_resolved_meals(
+    async def async_get_resolved_meals(  # noqa: C901
         self,
         target_date,
     ) -> list[dict]:
@@ -591,6 +591,119 @@ class MealMinderStorage:
         await self.async_save()
 
         return duplicated
+
+    async def async_import_diet(self, diet_data: dict) -> dict:
+        """Import a diet as a new meal plan."""
+
+        if not isinstance(diet_data, dict):
+            raise ValueError("Diet data must be a JSON object.")
+
+        required_fields = {
+            "name",
+            "start_date",
+            "end_date",
+            "meals",
+        }
+
+        missing_fields = required_fields - diet_data.keys()
+        if missing_fields:
+            raise ValueError(
+                f"Missing required fields: {', '.join(sorted(missing_fields))}"
+            )
+
+        name = diet_data["name"]
+        start_date = diet_data["start_date"]
+        end_date = diet_data["end_date"]
+        meals = diet_data["meals"]
+
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Diet name must be a non-empty string.")
+
+        if not isinstance(meals, list):
+            raise ValueError("Diet meals must be a list.")
+
+        start_date = _normalize_plan_date(start_date)
+        end_date = _normalize_plan_date(end_date)
+
+        if start_date > end_date:
+            raise InvalidDateRangeError("Diet start date cannot be after end date.")
+
+        validated_meals = []
+
+        for index, meal in enumerate(meals, start=1):
+            if not isinstance(meal, dict):
+                raise ValueError(f"Meal #{index} must be an object.")
+
+            for field_name in ("time", "type", "items"):
+                if field_name not in meal:
+                    raise ValueError(f"Meal #{index} is missing '{field_name}'.")
+
+            time = meal["time"]
+            meal_type = meal["type"]
+            items = meal["items"]
+            weekday = meal.get("weekday")
+            date = meal.get("date")
+            preparation = meal.get("preparation")
+
+            if not isinstance(time, str) or not time.strip():
+                raise ValueError(f"Meal #{index} has an invalid time.")
+
+            if not isinstance(meal_type, str) or not meal_type.strip():
+                raise ValueError(f"Meal #{index} has an invalid type.")
+
+            if not isinstance(items, list) or not all(
+                isinstance(item, str) for item in items
+            ):
+                raise ValueError(f"Meal #{index} items must be a list of strings.")
+
+            if weekday is not None and date is not None:
+                raise ValueError(
+                    f"Meal #{index} cannot contain both 'weekday' and 'date'."
+                )
+
+            if weekday is not None:
+                if not isinstance(weekday, int) or weekday < -1 or weekday > 6:
+                    raise ValueError(f"Meal #{index} has an invalid weekday.")
+
+            if date is not None:
+                if not isinstance(date, str) or not date.strip():
+                    raise ValueError(f"Meal #{index} has an invalid date.")
+                _parse_plan_date(date)
+
+            if preparation is not None and not isinstance(preparation, dict):
+                raise ValueError(
+                    f"Meal #{index} preparation must be an object or null."
+                )
+
+            validated_meals.append(
+                {
+                    "time": time,
+                    "type": meal_type,
+                    "items": items,
+                    "weekday": weekday,
+                    "date": date,
+                    "preparation": preparation,
+                }
+            )
+
+        plan = await self.async_create_plan(
+            name=name.strip(),
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        for meal in validated_meals:
+            await self.async_add_meal(
+                plan["id"],
+                meal_type=meal["type"],
+                items=meal["items"],
+                meal_time=meal["time"],
+                weekday=meal["weekday"],
+                date=meal["date"],
+                preparation=meal["preparation"],
+            )
+
+        return await self.async_get_plan(plan["id"])
 
     async def async_export(self):
         """Export the current configuration to a JSON file.

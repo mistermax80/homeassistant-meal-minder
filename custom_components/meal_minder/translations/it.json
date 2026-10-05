@@ -84,7 +84,9 @@
         },
         "menu_options": {
           "export_backup": "📤 Crea backup dati",
-          "import_backup": "📥 Importa backup dati"
+          "import_backup": "📥 Importa backup dati",
+          "import_diet": "🍽️ Importa dieta",
+          "diet_prompt": "🤖 Template AI dieta"
         }
       },
       "export_backup": {
@@ -101,6 +103,20 @@
           "backup": "Backup JSON"
         }
       },
+      "import_diet": {
+        "title": "Importa dieta",
+        "description": "Incolla il JSON della dieta nel campo sottostante. Verrà creato un nuovo piano pasti senza modificare i piani esistenti.",
+        "data": {
+          "diet_json": "Dieta JSON"
+        }
+      },
+      "diet_prompt": {
+        "title": "Template AI per importare una dieta",
+        "description": "Copia questo template e utilizzalo insieme al PDF della dieta con ChatGPT o Gemini. Il risultato sarà un JSON compatibile con Meal Minder.",
+        "data": {
+          "prompt": "Template AI"
+        }
+      },
       "import_success": {
         "title": "Import completato",
         "description": "La configurazione è stata importata correttamente.\n\nPiani importati: {plans}"
@@ -114,7 +130,9 @@
       "unknown_error": "Si è verificato un errore imprevisto.",
       "invalid_json": "Il contenuto inserito non è un JSON valido.",
       "invalid_backup": "Il file inserito non è un backup Meal Minder valido.",
-      "instance_id_exists": "Un'istanza con questo nome esiste già."
+      "instance_id_exists": "Un'istanza con questo nome esiste già.",
+      "invalid_diet": "La dieta inserita non è valida.",
+      "import_failed": "Si è verificato un errore durante l'importazione della dieta."
     },
     "abort": {
       "not_implemented": "Questa funzionalità non è ancora implementata.",

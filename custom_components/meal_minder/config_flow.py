@@ -3,6 +3,7 @@
 import json
 import logging
 import uuid
+from pathlib import Path
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -18,6 +19,7 @@ from .helpers import create_instance_id, format_meal_label, meal_sort_key
 from .storage_manager import get_storage
 
 _LOGGER = logging.getLogger(__name__)
+DIET_PROMPT_FILE = Path(__file__).with_name("diet_prompt.txt")
 
 
 class MealMinderConfigFlow(
@@ -466,43 +468,103 @@ class MealMinderOptionsFlow(config_entries.OptionsFlow):
             menu_options=[
                 "export_backup",
                 "import_backup",
+                "import_diet",
+                "diet_prompt",
             ],
         )
 
-    async def async_step_export_backup(self, user_input=None):
-        """Export Meal Minder backup."""
+    async def async_step_import_diet(
+        self,
+        user_input: dict | None = None,
+    ) -> FlowResult:
+        """Import a diet as a new meal plan."""
 
         if user_input is not None:
-            return await self.async_step_init()
+            try:
+                diet_data = json.loads(user_input["diet_json"])
 
-        storage = self.storage
+                plan = await self.storage.async_import_diet(diet_data)
 
-        export_data = await storage.async_get_export_data()
+                persistent_notification.create(
+                    self.hass,
+                    (
+                        f"Diet '{plan['name']}' imported successfully "
+                        f"with {len(plan.get('meals', []))} meals."
+                    ),
+                    title="Meal Minder",
+                    notification_id=f"{DOMAIN}_diet_import",
+                )
 
-        export_text = json.dumps(
-            export_data,
-            indent=2,
-            ensure_ascii=False,
-        )
+                return await self.async_step_init()
 
-        persistent_notification.async_create(
-            self.hass,
-            message="```json\n" + export_text,
-            title="Meal Minder Export Backup",
-        )
+            except json.JSONDecodeError:
+                return self.async_show_form(
+                    step_id="import_diet",
+                    data_schema=self._import_diet_schema(),
+                    errors={"base": "invalid_json"},
+                )
+
+            except (ValueError, InvalidDateError, InvalidDateRangeError) as err:
+                _LOGGER.exception("Invalid diet import: %s", err)
+
+                return self.async_show_form(
+                    step_id="import_diet",
+                    data_schema=self._import_diet_schema(),
+                    errors={"base": "invalid_diet"},
+                )
+
+            except Exception:
+                _LOGGER.exception("Failed to import diet")
+
+                return self.async_show_form(
+                    step_id="import_diet",
+                    data_schema=self._import_diet_schema(),
+                    errors={"base": "import_failed"},
+                )
 
         return self.async_show_form(
-            step_id="export_backup",
+            step_id="import_diet",
+            data_schema=self._import_diet_schema(),
+        )
+
+    def _import_diet_schema(self) -> vol.Schema:
+        """Return the import diet schema."""
+
+        return vol.Schema(
+            {
+                vol.Required("diet_json"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                    )
+                ),
+            }
+        )
+
+    async def async_step_diet_prompt(
+        self,
+        user_input: dict | None = None,
+    ) -> FlowResult:
+        """Show the AI diet import prompt."""
+
+        try:
+            prompt = DIET_PROMPT_FILE.read_text(encoding="utf-8")
+        except OSError:
+            _LOGGER.exception("Unable to read diet prompt")
+
+            prompt = "Template AI dieta non disponibile."
+
+        return self.async_show_form(
+            step_id="diet_prompt",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "backup",
-                        default=export_text,
-                    ): TextSelector(
-                        TextSelectorConfig(
+                    vol.Optional(
+                        "prompt",
+                        default=prompt,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
                             multiline=True,
                         )
-                    )
+                    ),
                 }
             ),
         )
