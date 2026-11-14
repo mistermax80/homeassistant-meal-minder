@@ -20,7 +20,7 @@ Smart meal planner for Home Assistant
 
 <p align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0--alpha.2-blue)
+![Version](https://img.shields.io/badge/version-1.0.0--alpha.7-blue)
 ![Development Status](https://img.shields.io/badge/status-alpha-orange)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5?logo=homeassistant)
 ![HACS](https://img.shields.io/badge/HACS-Custom%20Repository-41BDF5)

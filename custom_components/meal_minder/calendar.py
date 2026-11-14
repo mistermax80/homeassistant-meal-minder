@@ -6,6 +6,7 @@ from datetime import datetime, time, timedelta
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
@@ -60,6 +61,18 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._events = []
 
+    async def _async_get_meal_names(self):
+        """Load meal titles for the configured Home Assistant language."""
+        translations = await async_get_translations(
+            self.hass, self.hass.config.language, "selector", {DOMAIN}
+        )
+        prefix = f"component.{DOMAIN}.selector.meal_type.options."
+        return {
+            key.removeprefix(prefix): value
+            for key, value in translations.items()
+            if key.startswith(prefix)
+        }
+
     async def _load_events(self):
 
         self._events = []
@@ -67,18 +80,12 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
         today = dt_util.now().date()
 
         meals = await self.storage.async_get_resolved_meals(today)
+        meal_names = await self._async_get_meal_names()
 
         _LOGGER.debug(
             "Loaded resolved meals: %s",
             meals,
         )
-
-        meal_names = {
-            "breakfast": "🍳 Colazione",
-            "snack": "🍪 Spuntino",
-            "lunch": "🍝 Pranzo",
-            "dinner": "🍽 Cena",
-        }
 
         for meal in meals:
             meal_time = meal.get(
@@ -165,13 +172,7 @@ class MealMinderCalendar(MealMinderSensorEntity, CalendarEntity):
     ):
 
         events = []
-
-        meal_names = {
-            "breakfast": "🍳 Colazione",
-            "lunch": "🍝 Pranzo",
-            "dinner": "🍽 Cena",
-            "snack": "🍪 Spuntino",
-        }
+        meal_names = await self._async_get_meal_names()
 
         current_date = start_date.date()
 

@@ -140,6 +140,17 @@
     }
   },
   "selector": {
+    "meal_type": {
+      "options": {
+        "breakfast": "🍳 Colazione",
+        "morning_snack": "🍪 Spuntino mattutino",
+        "lunch": "🍝 Pranzo",
+        "afternoon_snack": "🍪 Spuntino pomeridiano",
+        "dinner": "🍽 Cena",
+        "evening_snack": "🍪 Spuntino serale",
+        "snack": "🍪 Spuntino"
+      }
+    },
     "plan_actions": {
       "options": {
         "activate": "✅ Attiva",
