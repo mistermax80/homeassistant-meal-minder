@@ -58,3 +58,6 @@ htmlcov/
 .env.*
 secrets.yaml
 custom_components/meal_minder/appunti.txt
+
+# Local agent instructions
+AGENTS.md
