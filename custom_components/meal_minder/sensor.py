@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
@@ -49,11 +50,13 @@ async def async_setup_entry(
     )
 
 
-async def find_next_meal(storage):
-    """Return the next upcoming meal within the next 7 days.
+async def find_next_meal(storage, grace_minutes=0):
+    """Return a recent meal within grace, or the next meal within 7 days.
 
     Args:
         storage: The storage object used to resolve meal entries.
+        grace_minutes: Minutes to retain the most recently started meal.
+            Zero preserves the strictly future-only search.
 
     Returns:
         The next meal candidate dict containing 'datetime' and 'meal',
@@ -62,8 +65,12 @@ async def find_next_meal(storage):
     """
 
     now = dt_util.now()
+    now_utc = dt_util.as_utc(now)
+    grace_start = now_utc - timedelta(minutes=grace_minutes)
+    first_date = dt_util.as_local(grace_start).date() if grace_minutes > 0 else now.date()
+    recent_candidates = []
 
-    for days_offset in range(7):
+    for days_offset in range((first_date - now.date()).days, 7):
         target_date = now.date() + timedelta(days=days_offset)
 
         meals = await storage.async_get_resolved_meals(target_date)
@@ -98,13 +105,25 @@ async def find_next_meal(storage):
                 now,
             )
 
-            if meal_datetime > now:
+            meal_utc = dt_util.as_utc(meal_datetime)
+            if grace_minutes > 0 and grace_start <= meal_utc <= now_utc:
+                recent_candidates.append(
+                    {"datetime": meal_datetime, "meal": meal}
+                )
+            elif meal_utc > now_utc:
                 candidates.append(
                     {
                         "datetime": meal_datetime,
                         "meal": meal,
                     }
                 )
+
+        # Check today's meals before returning a meal from the previous day.
+        if target_date >= now.date() and recent_candidates:
+            return max(
+                recent_candidates,
+                key=lambda x: dt_util.as_utc(x["datetime"]),
+            )
 
         if candidates:
             return min(
@@ -116,7 +135,7 @@ async def find_next_meal(storage):
 
 
 async def find_next_preparation(storage):
-    """Return the next meal preparation reminder within the next 7 days.
+    """Return the earliest future preparation for meals in the next 7 days.
 
     Args:
         storage: The storage object used to resolve meal entries.
@@ -128,13 +147,13 @@ async def find_next_preparation(storage):
     """
 
     now = dt_util.now()
+    now_utc = dt_util.as_utc(now)
+    candidates = []
 
     for days_offset in range(7):
         target_date = now.date() + timedelta(days=days_offset)
 
         meals = await storage.async_get_resolved_meals(target_date)
-
-        candidates = []
 
         for meal in meals:
             preparation = meal.get("preparation")
@@ -162,14 +181,17 @@ async def find_next_preparation(storage):
 
             meal_datetime = dt_util.as_local(meal_datetime)
 
-            preparation_datetime = meal_datetime + timedelta(
-                minutes=preparation.get(
-                    "offset",
-                    0,
+            # Subtract elapsed minutes in UTC to cross DST changes correctly.
+            preparation_datetime = dt_util.as_local(
+                dt_util.as_utc(meal_datetime) - timedelta(
+                    minutes=preparation.get(
+                        "offset",
+                        0,
+                    )
                 )
             )
 
-            if preparation_datetime > now:
+            if dt_util.as_utc(preparation_datetime) > now_utc:
                 candidates.append(
                     {
                         "datetime": preparation_datetime,
@@ -177,11 +199,11 @@ async def find_next_preparation(storage):
                     }
                 )
 
-        if candidates:
-            return min(
-                candidates,
-                key=lambda x: x["datetime"],
-            )
+    if candidates:
+        return min(
+            candidates,
+            key=lambda x: dt_util.as_utc(x["datetime"]),
+        )
 
     return None
 
@@ -209,7 +231,7 @@ class MealMinderNextMealSensor(MealMinderSensorEntity, SensorEntity):
     async def async_update(self):
         """Fetch the next scheduled meal and update sensor state."""
 
-        next_meal = await find_next_meal(self.storage)
+        next_meal = await find_next_meal(self.storage, grace_minutes=60)
 
         if next_meal:
             meal = next_meal["meal"]
@@ -298,6 +320,7 @@ class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
         self._attr_native_value = len(meals)
 
         self._attr_extra_state_attributes = {
+            "date": today.isoformat(),
             "meals": meals,
         }
 
@@ -315,6 +338,22 @@ class MealMinderTodayMealsSensor(MealMinderSensorEntity, SensorEntity):
                 self._handle_update,
             )
         )
+
+        self.async_on_remove(
+            async_track_time_change(
+                self.hass,
+                self._handle_midnight,
+                hour=0,
+                minute=0,
+                second=0,
+            )
+        )
+
+    async def _handle_midnight(self, now: datetime) -> None:
+        """Refresh today's meals at local midnight."""
+
+        await self.async_update()
+        self.async_write_ha_state()
 
     async def _handle_update(self, event):
 

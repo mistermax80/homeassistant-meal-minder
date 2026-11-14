@@ -53,6 +53,34 @@ def _parse_plan_date(value: str | date | datetime) -> date:
     return datetime.fromisoformat(str(value)).date()
 
 
+def _validate_meal_schedule(weekday: int | None, meal_date: str | None) -> None:
+    """Require exactly one valid weekday or ISO calendar date."""
+
+    if (weekday is None) == (meal_date is None):
+        raise ValueError("Meal must specify exactly one of 'weekday' or 'date'.")
+
+    if weekday is not None:
+        if (
+            isinstance(weekday, bool)
+            or not isinstance(weekday, int)
+            or not -1 <= weekday <= 6
+        ):
+            raise ValueError("Meal weekday must be an integer from -1 to 6.")
+        return
+
+    if not isinstance(meal_date, str):
+        # Callers handle schedule validation failures as ValueError.
+        raise ValueError("Meal date must use YYYY-MM-DD format.")  # noqa: TRY004
+
+    try:
+        parsed_date = date.fromisoformat(meal_date)
+    except ValueError as err:
+        raise ValueError("Meal date must be a valid date in YYYY-MM-DD format.") from err
+
+    if parsed_date.isoformat() != meal_date:
+        raise ValueError("Meal date must use YYYY-MM-DD format.")
+
+
 class MealMinderStorage:
     """Manage persistent storage for Meal Minder integration."""
 
@@ -148,17 +176,12 @@ class MealMinderStorage:
         Raises:
         ------
         ValueError
-            If both weekday and date are provided or the plan is not found.
+            If the schedule is invalid or the plan is not found.
 
         """
 
-        # Meal can be added in three ways:
-        # - weekday valorizzato
-        # - date valorizzata
-        # - entrambi null = tutti i giorni
-
-        if weekday is not None and date is not None:
-            raise ValueError("Meal cannot have both weekday and date")
+        # Daily meals explicitly use weekday=-1; None is not a recurrence.
+        _validate_meal_schedule(weekday, date)
 
         meal = Meal.create(
             time=meal_time,
@@ -249,6 +272,13 @@ class MealMinderStorage:
         for plan in self.data.get("plans", []):
             for meal in plan.get("meals", []):
                 if meal.get("id") == meal_id:
+                    if "weekday" in updates or "date" in updates:
+                        _validate_meal_schedule(
+                            updates.get("weekday", meal.get("weekday")),
+                            updates.get("date", meal.get("date")),
+                        )
+
+                    # Preserve incomplete legacy schedules for unrelated edits.
                     for key, value in updates.items():
                         if key in allowed_fields:
                             meal[key] = value
@@ -281,7 +311,7 @@ class MealMinderStorage:
         Priority:
         1. Exact date meals (exceptions)
         2. Weekday recurring meals
-        3. Meals without date/weekday (every day)
+        3. Meals with weekday=-1 (every day)
         """
 
         active_plan_id = self.data.get("active_plan")
@@ -656,19 +686,10 @@ class MealMinderStorage:
             ):
                 raise ValueError(f"Meal #{index} items must be a list of strings.")
 
-            if weekday is not None and date is not None:
-                raise ValueError(
-                    f"Meal #{index} cannot contain both 'weekday' and 'date'."
-                )
-
-            if weekday is not None:
-                if not isinstance(weekday, int) or weekday < -1 or weekday > 6:
-                    raise ValueError(f"Meal #{index} has an invalid weekday.")
-
-            if date is not None:
-                if not isinstance(date, str) or not date.strip():
-                    raise ValueError(f"Meal #{index} has an invalid date.")
-                _parse_plan_date(date)
+            try:
+                _validate_meal_schedule(weekday, date)
+            except ValueError as err:
+                raise ValueError(f"Meal #{index}: {err}") from err
 
             if preparation is not None and not isinstance(preparation, dict):
                 raise ValueError(
@@ -770,7 +791,7 @@ class MealMinderStorage:
 
         async_fire_updated(
             self.hass,
-            self.storage.entry_id,
+            self.entry_id,
         )
 
         return {
