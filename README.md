@@ -139,33 +139,8 @@ Restart Home Assistant.
 
 ## Roadmap
 
-### ✅ Alpha
-
-- [x] Meal plans
-- [x] Weekly meals
-- [x] Date exceptions
-- [x] Calendar entity
-- [x] Next meal sensor
-- [x] Preparation reminder sensor
-- [x] Export / Import
-- [x] Diagnostics
-- [x] HACS support
-
-### 🚧 Beta
-
-- [ ] Lovelace cards
-- [ ] Shopping list integration
-- [ ] Companion App notifications
-- [ ] Translation files
-- [ ] Documentation improvements
-
-### 🚀 Stable
-
-- [ ] Recipe support
-- [ ] Pantry management
-- [ ] AI meal suggestions
-- [ ] Nutrition information
-- [ ] Multi-user support
+See the [development roadmap](docs/ROADMAP.md) for the current project status,
+known gaps, and proposed release milestones.
 
 ---
 
